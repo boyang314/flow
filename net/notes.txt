@@ -1,2 +1,2 @@
-mcastsend: set Interface && TTL, send to MulticastGroup&Port
+mcastsend: set Interface && TTL (value 2, 63, etc), send to MulticastGroup&Port
 mcastrecv: set reuseAddr, add membership, bind to MulticastGroup&Port, recv
