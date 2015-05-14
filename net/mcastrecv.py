@@ -1,0 +1,22 @@
+#!/usr/bin/python
+
+from sys import argv
+if len(argv) != 4: 
+	print argv[0], '<if_ip> <mcast_group> <mcast_port>'
+	exit(1)
+
+if_ip = argv[1]
+mcast_group = argv[2]
+mcast_port = int(argv[3])
+
+print 'from', argv[1], 'listen/join', argv[2], ':', argv[3]
+
+from socket import *
+mcastsock = socket(AF_INET, SOCK_DGRAM)
+mcastsock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+#mcastsock.setsockopt(SOL_IP, IP_ADD_MEMBERSHIP, inet_aton(mcast_group)+inet_aton(if_ip))
+mcastsock.setsockopt(IPPROTO_IP, IP_ADD_MEMBERSHIP, inet_aton(mcast_group)+inet_aton(if_ip))
+mcastsock.bind((mcast_group, mcast_port))
+
+while 1:
+  print mcastsock.recv(1024)
