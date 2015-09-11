@@ -1,0 +1,30 @@
+#!/usr/bin/python
+
+from sys import *
+from socket import *
+
+#file filled with mcastgroup:mcastport
+
+if len(argv) != 3: 
+    print argv[0], '<if_ip> <file>'
+    exit(1)
+
+if_ip = argv[1]
+socks = []
+
+with open(argv[2]) as f:
+    ips = [line.strip('\n').split(':') for line in f.readlines()]
+    for (mcast_group, mcast_port) in ips :
+        print 'from', if_ip, 'listen/join', mcast_group, ':', mcast_port
+        mcastsock = socket(AF_INET, SOCK_DGRAM)
+        mcastsock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        mcastsock.setsockopt(SOL_IP, IP_ADD_MEMBERSHIP, inet_aton(mcast_group)+inet_aton(if_ip))
+        mcastsock.bind((mcast_group, int(mcast_port)))
+        socks.append(mcastsock)
+#print len(socks)
+while 1:
+    for mcastsock in socks :
+        data = mcastsock.recv(1024)
+        #print data.decode('utf-8')
+        print data.decode('ascii', 'ignore')
+        #print mcastsock.recv(1024).decode('utf-8')
