@@ -2,6 +2,7 @@
 
 from sys import *
 from socket import *
+import select
 
 #file filled with mcastgroup:mcastport
 
@@ -21,10 +22,13 @@ with open(argv[2]) as f:
         mcastsock.setsockopt(SOL_IP, IP_ADD_MEMBERSHIP, inet_aton(mcast_group)+inet_aton(if_ip))
         mcastsock.bind((mcast_group, int(mcast_port)))
         socks.append(mcastsock)
-#print len(socks)
+
 while 1:
-    for mcastsock in socks :
-        data = mcastsock.recv(1024)
-        #print data.decode('utf-8')
+    #ready_to_read, ready_to_write, in_error = select.select( potential_readers, potential_writers, potential_errs, timeout)
+    ready_to_read, ready_to_write, in_error = select.select(socks, [], [], 1)
+    for mcastsock in ready_to_read :
+        data = mcastsock.recv(512)
+        #print data
         print data.decode('ascii', 'ignore')
-        #print mcastsock.recv(1024).decode('utf-8')
+        #print data.decode("utf-8", "ignore")
+        #print data.decode('base64')
