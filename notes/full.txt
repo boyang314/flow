@@ -777,7 +777,7 @@ bliu@ubuntu:~$ history
   917  cd ..
   918  mkdir test2
   919  cd test2
-  920  scp f083251@169.89.255.120:tmp/tprio1.c .
+  920  scp myid@169.89.255.120:tmp/tprio1.c .
   921  gcc -o tprio1 tprio1.c -pthread
   922  ./tprio1&
   923  top -H -p 2682
@@ -963,25 +963,25 @@ bliu@ubuntu:~$ history
  1103  chmod g-rw  .pass
  1104  ls -l .pass
  1105  which sshpass
- 1106  echo "uptime"|tee >(sshpass -f ~/.pass ssh f083251@eqdcr-exb12.us.jpmchase.net) >(sshpass -f ~/.pass ssh f083251@eqdcr-exb19.us.jpmchase.net)
- 1107  echo "ls"|tee >(sshpass -f ~/.pass ssh f083251@eqdcr-exb12.us.jpmchase.net) >(sshpass -f ~/.pass ssh f083251@eqdcr-exb19.us.jpmchase.net)
+ 1106  echo "uptime"|tee >(sshpass -f ~/.pass ssh myid@eqdcr-exb12.us.atwork.net) >(sshpass -f ~/.pass ssh myid@eqdcr-exb19.us.atwork.net)
+ 1107  echo "ls"|tee >(sshpass -f ~/.pass ssh myid@eqdcr-exb12.us.atwork.net) >(sshpass -f ~/.pass ssh myid@eqdcr-exb19.us.atwork.net)
  1108  vi test/remote.sh
- 1109  sshpass -f ~/.pass ssh f083251@eqdcr-exb12.us.jpmchase.net 'ls'
- 1110  sshpass -f ~/.pass ssh f083251@eqdcr-exb12.us.jpmchase.net 'ls' > a.out
+ 1109  sshpass -f ~/.pass ssh myid@eqdcr-exb12.us.atwork.net 'ls'
+ 1110  sshpass -f ~/.pass ssh myid@eqdcr-exb12.us.atwork.net 'ls' > a.out
  1111  cat a.out
  1112  rm a.out
  1113  cat ~/.pass
  1114  chmod u+r ~/.pass
  1115  cat ~/.pass
- 1116  sshpass -f ~/.pass ssh f083251@eqdcr-exb12.us.jpmchase.net 'ls'
- 1117  ssh f083251@eqdcr-exb12.us.jpmchase.net 'ls'
- 1118  ssh f083251@eqdcr-exb12.us.jpmchase.net
- 1119  ssh f083251@eqdcr-exb20.us.jpmchase.net
- 1120  ssh f083251@eqdcr-exb12.us.jpmchase.net 'ls'
+ 1116  sshpass -f ~/.pass ssh myid@eqdcr-exb12.us.atwork.net 'ls'
+ 1117  ssh myid@eqdcr-exb12.us.atwork.net 'ls'
+ 1118  ssh myid@eqdcr-exb12.us.atwork.net
+ 1119  ssh myid@eqdcr-exb20.us.atwork.net
+ 1120  ssh myid@eqdcr-exb12.us.atwork.net 'ls'
  1121  cat ~/.pass
  1122  vi ~/.pass
  1123  history
- 1124  sshpass -f ~/.pass ssh f083251@eqdcr-exb12.us.jpmchase.net 'ls'
+ 1124  sshpass -f ~/.pass ssh myid@eqdcr-exb12.us.atwork.net 'ls'
  1125  cd test
  1126  vi remote.sh
  1127  history
@@ -1515,7 +1515,7 @@ bliu@ubuntu:~$ history
  1655  ls -ltr
  1656  ./imbalance.pl 0821.position
  1657  cat local.sh
- 1658  sshpass -f ~/.pass ssh f083251@eqpwk-exb90.us.jpmchase.net
+ 1658  sshpass -f ~/.pass ssh myid@eqpwk-exb90.us.atwork.net
  1659  history
  1660  cat ~/bin/secaus.sh
  1661  vi ~/bin/lbmlogger.sh
@@ -1589,25 +1589,25 @@ bliu@ubuntu:~$ history
  1729  ./secaus.sh
  1730  vi secaus.sh
  1731  cat secaus.sh
- 1732  sshpass -f ~/.pass ssh f083251@eqpsc-exb143.us.jpmchase.net
- 1733  sshpass -f ~/.pass ssh f083251@eqpwk-exb80.us.jpmchase.net
+ 1732  sshpass -f ~/.pass ssh myid@eqpsc-exb143.us.atwork.net
+ 1733  sshpass -f ~/.pass ssh myid@eqpwk-exb80.us.atwork.net
  1734  ./lbmlogger.sh
  1735  ./jpmxprod.sh
  1736  diff lbmlogger.sh jpmxprod.sh
- 1737  sshpass -f ~/.pass ssh f083251@eqpwk-exb80.us.jpmchase.net
- 1738  ssh f083251@eqpwk-exb80.us.jpmchase.net
- 1739  ssh f083251@eqpwk-exb78.us.jpmchase.net
- 1740  ssh f083251@eqpwk-exb79.us.jpmchase.net
- 1741  ssh f083251@eqpwk-exb88.us.jpmchase.net
- 1742  ssh f083251@eqpwk-exb89.us.jpmchase.net
+ 1737  sshpass -f ~/.pass ssh myid@eqpwk-exb80.us.atwork.net
+ 1738  ssh myid@eqpwk-exb80.us.atwork.net
+ 1739  ssh myid@eqpwk-exb78.us.atwork.net
+ 1740  ssh myid@eqpwk-exb79.us.atwork.net
+ 1741  ssh myid@eqpwk-exb88.us.atwork.net
+ 1742  ssh myid@eqpwk-exb89.us.atwork.net
  1743  cat jpmxprod.sh
  1744  ./jpmxprod.sh
  1745  cat secaus.sh
- 1746  ssh f083251@eqpsc-exb143.us.jpmchase.net
- 1747  ssh f083251@eqpsc-exb162.us.jpmchase.net
- 1748  ssh f083251@eqpsc-exb163.us.jpmchase.net
- 1749  ssh f083251@eqpsc-exb164.us.jpmchase.net
- 1750  ssh f083251@eqpsc-exb168.us.jpmchase.net
+ 1746  ssh myid@eqpsc-exb143.us.atwork.net
+ 1747  ssh myid@eqpsc-exb162.us.atwork.net
+ 1748  ssh myid@eqpsc-exb163.us.atwork.net
+ 1749  ssh myid@eqpsc-exb164.us.atwork.net
+ 1750  ssh myid@eqpsc-exb168.us.atwork.net
  1751  ./secaus.sh
  1752  ps
  1753  vi secaus.sh
@@ -1620,10 +1620,10 @@ bliu@ubuntu:~$ history
  1760  vi secaus.sh
  1761  ./secaus.sh
  1762  cat secaus.sh
- 1763  sshpass -f ~/.pass ssh f083251@eqpsc-exb168.us.jpmchase.net
+ 1763  sshpass -f ~/.pass ssh myid@eqpsc-exb168.us.atwork.net
  1764  cat secaus.sh
- 1765  sshpass -f ~/.pass ssh f083251@eqpsc-exb168.us.jpmchase.net -t "cd ~a_exb_u;;bash"
- 1766  sshpass -f ~/.pass ssh f083251@eqpsc-exb168.us.jpmchase.net -t "cd ~a_exb_u;bash"
+ 1765  sshpass -f ~/.pass ssh myid@eqpsc-exb168.us.atwork.net -t "cd ~a_exb_u;;bash"
+ 1766  sshpass -f ~/.pass ssh myid@eqpsc-exb168.us.atwork.net -t "cd ~a_exb_u;bash"
  1767  vi secaus.sh
  1768  ./secaus.sh
  1769  vi secaus.sh
@@ -1665,10 +1665,10 @@ bliu@ubuntu:~$ history
  1805  vi lbm2.sh
  1806  cd
  1807  lbm2.sh
- 1808  ssh f083251@eqpwk-exb83.us.jpmchase.net
- 1809  ssh f083251@eqpwk-exb84.us.jpmchase.net
- 1810  ssh f083251@eqpwk-exb85.us.jpmchase.net
- 1811  ssh f083251@eqpwk-exb86.us.jpmchase.net
+ 1808  ssh myid@eqpwk-exb83.us.atwork.net
+ 1809  ssh myid@eqpwk-exb84.us.atwork.net
+ 1810  ssh myid@eqpwk-exb85.us.atwork.net
+ 1811  ssh myid@eqpwk-exb86.us.atwork.net
  1812  lbm2.sh
  1813  ls
  1814  cd bin
@@ -1686,7 +1686,7 @@ bliu@ubuntu:~$ history
  1826  ls
  1827  qa
  1828  vi ~/.bashrc
- 1829  ssh f083251@equcr-exb30.us.jpmchase.net
+ 1829  ssh myid@equcr-exb30.us.atwork.net
  1830  qa
  1831  history
  1832  dev
@@ -1716,11 +1716,11 @@ bliu@ubuntu:~$ history
  1856  . ~/.bashrc
  1857  dev1
  1858  cat ~/.bashrc
- 1859  sshpass -f ~/.pass ssh f083251@fxucr-ats1021-adm.us.jpmchase.net
- 1860  ssh f083251@fxucr-ats1021-adm.us.jpmchase.net
+ 1859  sshpass -f ~/.pass ssh myid@fxucr-ats1021-adm.us.atwork.net
+ 1860  ssh myid@fxucr-ats1021-adm.us.atwork.net
  1861  dev1
- 1862  ssh f083251@fxucr-ats1022-adm.us.jpmchase.net
- 1863  ssh f083251@fxucr-ats1023-adm.us.jpmchase.net
+ 1862  ssh myid@fxucr-ats1022-adm.us.atwork.net
+ 1863  ssh myid@fxucr-ats1023-adm.us.atwork.net
  1864  vi ~/.bashrc
  1865  exit
  1866  ps
