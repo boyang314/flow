@@ -1,0 +1,9 @@
+
+Right after mid-year review sign off, Oleg brought up a conversation about the recent work he has done for srlab and his career growth path.
+
+Oleg was evaluating Clang compiler and new boost libraries for exb core cpp next move, and experimenting some optimization related flags to boost c++ app performance. Due to recent crashes of srlab, he ends up helping srlab building its source code with his customized Clang compiler and catching runtime heap corruptions. Oleg was involved from the beginning to bridge in srlab into our liquity common component, and until recently building/debugging srlab to solve its runtime issues. I do hope you have chance to hear what frontline fighter has to say about srlab firsthand.
+
+Oleg started with the team by leading the development of liquidity common components library, and this project has grown pretty well and spread to all regions, jisu, sor/osor, jpmx all depends on this library. However, we do not have an official owner of this liq common project, it make sense to make him the official owner to encourage him and acknowledge his contribution and authority in exb c++ compiler and library picking kind of critical decision making process. (He was in fact doing this work for exb core and liq common for the past few years, we just want to make this process smoother)
+
+To me, Oleg is no BS and no nonsense guy. Since he wrote 90% of exb++ and has the right knowledge to help bridge liq.common and ettcore, when there is an issue in the liquidity space, he is the one with insight to come up with the right solution instead of continuing to hack around it. Since he has been exposed to both sides (core and liq), it makes sense for him to be the point person on this. This will help streamline c++ side fundamental decision making as well.
+

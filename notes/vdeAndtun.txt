@@ -1,0 +1,33 @@
+ 2042  sudo apt-get install vde2
+ 2043  which vde_switch
+ 2044  sudo vde_switch -tap tap0 -tap tap1
+
+install and create virtual switch
+
+ 1972  sudo ip addr add 10.0.31.10 dev tap0
+ 1973  sudo ip addr add 10.0.31.11 dev tap1
+ 1974  ip link
+ 1975  ifconfig -a
+ 1976  socat - tcp-listen:4234,bind=10.0.31.10
+
+create two IPs, and listen on one in another terminal
+
+ 1948  ip link
+ 1949  socat - tcp:10.0.31.10:4234,bind=10.0.31.11
+
+create a client in another terminal
+
+
+NOTE: through this parctice, link shows down, but it has no impact for client sending message to server
+
+NOTE: all traffic go through 'lo', linux fiugred out all local so routing works, but not through vde_switch
+	if we bring up the two interface we created, and tcpdump on them, no traffic oberved
+	tcpdump will show traffic under 'lo'
+
+
+ 2083  sudo vde_switch -tap tap0 -tap tap1 -d
+ 2084  ip link
+ 2085  ifconfig
+ 2088  sudo ifconfig tap0 10.0.31.10
+ 2089  sudo ifconfig tap1 10.0.31.11
+

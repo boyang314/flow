@@ -1,0 +1,103 @@
+The practice of configuring multiple IP addresses on a particular network interface is called IP aliasing. IP aliasing is useful when you set up multiple sites on virtual web hosting on a single interface, or maintain multiple connections to a network each of which serves a different purpose. You can assign multiple IP addresses to one network interface from a single subnet or completely different ones.
+
+All existing Linux distributions including CentOS supports IP aliasing. Here is how to bind multiple IP addresses to a single network interface on CentOS.
+
+If you would like to set up IP aliasing on the fly, there are two ways to do it. One way is to use ifconfig, and the other method is to use ip command. Using these two methods, let me show you how to add two extra IP addresses to eth0.
+
+To use the first method:
+$ sudo ifconfig eth0:1 192.168.10.10 netmask 255.255.255.0 up
+$ sudo ifconfig eth0:2 192.168.10.15 netmask 255.255.255.0 up
+
+To use the second method:
+$ sudo ip addr add 192.168.10.10/24 dev eth0
+$ sudo ip addr add 192.168.10.15/24 dev eth0
+
+To view a list of all IP addresses assigned to eth0 by using either method, run the following command.
+$ sudo ip addr list dev eth0
+
+2: eth0:  mtu 1500 qdisc pfifo_fast state UNKNOWN qlen 1000
+    link/ether 00:0c:29:5c:86:f4 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.91.128/24 brd 192.168.91.255 scope global eth0
+    inet 192.168.91.10/24 scope global secondary eth0
+    inet 192.168.91.20/24 scope global secondary eth0
+    inet6 fe80::20c:29ff:fe5c:86f4/64 scope link
+       valid_lft forever preferred_lft forever
+
+If you used ifconfig to create IP aliases, you can also use the same command to view them.
+$ ifconfig -a
+
+eth0      Link encap:Ethernet  HWaddr 00:0C:29:5C:86:F4
+          inet addr:192.168.91.128  Bcast:192.168.91.255  Mask:255.255.255.0
+          inet6 addr: fe80::20c:29ff:fe5c:86f4/64 Scope:Link
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:22 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:102 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000
+          RX bytes:3869 (3.7 KiB)  TX bytes:18172 (17.7 KiB)
+          Interrupt:19 Base address:0x2000
+
+eth0:1    Link encap:Ethernet  HWaddr 00:0C:29:5C:86:F4
+          inet addr:192.168.91.10  Bcast:192.168.91.255  Mask:255.255.255.0
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          Interrupt:19 Base address:0x2000
+
+eth0:2    Link encap:Ethernet  HWaddr 00:0C:29:5C:86:F4
+          inet addr:192.168.91.20  Bcast:192.168.91.255  Mask:255.255.255.0
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          Interrupt:19 Base address:0x2000
+
+lo        Link encap:Local Loopback
+          inet addr:127.0.0.1  Mask:255.0.0.0
+          inet6 addr: ::1/128 Scope:Host
+          UP LOOPBACK RUNNING  MTU:16436  Metric:1
+          RX packets:8 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:8 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:0
+          RX bytes:480 (480.0 b)  TX bytes:480 (480.0 b)
+
+If you would like to permanently assign multiple IP addresses to an interface, create corresponding configuration files in /etc/sysconfig/network-scripts.
+$ sudo vi /etc/sysconfig/network-scripts/ifcfg-eth0:1
+
+DEVICE=eth0:1
+BOOTPROTO=static
+IPADDR=192.168.0.5
+NETMASK=255.255.255.0
+ONBOOT=yes
+
+Once you have created as many configuration files as IP addresses to assign, restart network to activate IP aliasing.
+$ sudo /etc/init.d/network restart
+
+
+
+
+
+
+With the new toolkit it's as easy as with the old to add new ip addresses:
+
+ip addr add 192.168.1.1/24 dev eth0
+
+When looking with ip addr show again, you see the second ip address assigned to the interface:
+
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
+    link/ether xx:xx:xx:xx:xx:xx brd ff:ff:ff:ff:ff:ff
+    inet 192.168.0.100/24 brd 192.168.0.255 scope global eth0
+    inet 192.168.1.1/24 scope global eth0
+    inet6 fe80::223:54ff:fe45:f307/64 scope link
+       valid_lft forever preferred_lft forever
+
+Remove that ip address with:
+
+ip addr del 192.168.1.1/24 dev eth0
+
+The iproute2 suite:
+
+The iproute2 suite is the communication suite for interprocess communication beween the kernel and the user space via the netlink protocol. It should replcae the whole standard network tools. Here is what they replace:
+
+    ifconfig --> ip addr and ip link
+    route --> ip route
+    arp --> ip neigh
+    iptunnel --> ip tunnel
+    ipmaddr --> ip maddr
+    netstat --> ss
+
+

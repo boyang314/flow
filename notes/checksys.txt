@@ -1,0 +1,208 @@
+1.) OS Stats
+
+$ ifconfig eth0; ifconfig -a 
+$ netstat -ni 
+$ netstat -s
+$ cat /proc/net/dev | columns -t 
+$ awk '{ print $1,$5 }' /proc/net/dev
+$ watch -n 1 cat /proc/interrupts 
+$ watch -n 1 cat /proc/softirqs
+$ vmstat -S m 1
+$ ifpps --dev eth0
+
+2.) Ethtool - NIC Configuration
+
+Show            ;           Set 
+
+$ ethtool -S eth0 // Statistics
+$ ethtool -S eth0 | egrep '(rx_missed|no_buffer)'    // Drop Values  
+$ ethtool -g eth0 ; ethtool -G eth0 rx 4096 tx 4096 // FIFO RX Descriptors
+$ ethtool -k eth0 ; ethtool -K gro on gso on rx on // Offloading
+$ ethtool -a eth0 ; ethtool -A rx off autoneg off // Pause Frames
+$ ethtool -c eth0 ; ethtool -C eth0 rx-usecs 100 // Interrupt Coalescence 
+
+3.) More OS Configurables
+
+$ cat /proc/net/softnet_stats; printf "%d" 0xffff //Backlog Queue Stats
+$ echo "1" > /proc/sys/net/core/bpf_jit_enable
+$ sysctl net.core.netdev_max_backlog; sysctl -w net.core.netdev_max_backlog=3000
+$ sysctl net.core.wmem_max; sysctl net.core.rmem_max 
+$ sysctl net.core.wmem_default; sysctl net.core.rmem_default 
+$ sysctl net.core.optmem_max
+$ echo "net.core.netdev_max_backlog=1024" >>  /etc/sysctl.conf
+
+4.) Example NIC Driver Configuration
+
+$ /etc/modprobe.d# cat e1000.conf
+options e1000 XsumRX=0,0,0,0,0 TxDescriptors=48,48,48,48,48  RxDescriptors=4096,4096,4096,4096,4096 FlowControl=0,0,0,0,0,1 InterruptThrottleRate=5000,5000,5000,5000,5000 debug=16
+
+$ modinfo -p e1000
+
+*/
+TxDescriptors:Number of transmit descriptors (array of int)
+RxDescriptors:Number of receive descriptors (array of int)
+Speed:Speed setting (array of int)
+Duplex:Duplex setting (array of int)
+AutoNeg:Advertised auto-negotiation setting (array of int)
+FlowControl:Flow Control setting (array of int)
+XsumRX:Disable or enable Receive Checksum offload (array of int)
+TxIntDelay:Transmit Interrupt Delay (array of int)
+TxAbsIntDelay:Transmit Absolute Interrupt Delay (array of int)
+RxIntDelay:Receive Interrupt Delay (array of int)
+RxAbsIntDelay:Receive Absolute Interrupt Delay (array of int)
+InterruptThrottleRate:Interrupt Throttling Rate (array of int)
+SmartPowerDownEnable:Enable PHY smart power down (array of int)
+copybreak:Maximum size of packet that is copied to a new buffer on receive (uint)
+debug:Debug level (0=none,...,16=all) (int)
+*/
+
+5.) Basic TCPdump Usage
+
+// name resolution off (-n) 
+$ tcpdump -c 10 -s0 -nni eth0 -w file.pcap
+$ tcpdump -c 10 -eXXvnnr file.pcap
+
+7.) PCAP Header, Redirection, & Reading Multiple Files
+
+$ cat file.pcap | tcpdump -nnr -  
+$ cat file1.pcap file2.pcap | tcpdump -nnr -  // doesn't work - bogus save file error
+
+// pcap version 2.4 header is 24 bytes
+
+$ dd if=file2.pcap of=new.pcap bs=1 skip=24; cat file1.pcap new.pcap | tcpdump -nnr - 
+$ tail -c +25 file2.pcap > new-cut.pcap; cat file1.pcap file2.pcap | tcpdump -nnr - 
+$ (cat file1.pcap ; ( tail -c +25 file1.pcap | cat )) | tcpdump -nnr -
+$ (cat file1.pcap ; ( tail -c +25 ; cat ) <file2.pcap) | tcpdump -nnr -
+$ (cat file1.pcap; (dd bs=24 count=0 skip=1; cat) <file2.pcap) | tcpdump -nnr -
+$ (cat test.pcap; (dd bs=24 count=0 skip=1 2>/dev/null; cat) <test1.pcap;  \ 
+(dd bs=24 count=0 skip=1 2>/dev/null; cat) <test.pcap ) | tcpdump -nnr - 
+
+// Linux cooked PCAP - uses pseudo linux-layer header
+$ tcpdump -nni any -c 10 -w cooked.pcap
+$ file cooked.pcap
+
+8.) Mergecap
+
+$ mergecap file1.pcap file2.pcap file3.pcap -w combined.pcap
+$ mergecap -F // shows formats
+$ mergecap -F libpcap *.pcap -w combine_all.pcap
+$ mergecap -a -F libpcap *.pcap -w - | tcpdump -nnr - // don't arrange TS
+
+9.) PCAP Statistical Data
+
+capinfos file.pcap
+tcpslice -r file.pcap
+tcpdstat file.pcap
+tcpprof -S lipn -P 30000 -r file.pcap
+
+9.) BPF (Berkely Packet Filters)
+
+// see print out of  
+// http://staff.washington.edu/dittrich/talks/core02/tools/tcpdump-filters.txt
+// http://www.wains.be/pub/networking/tcpdump_advanced_filters.txt
+ 
+// proper shell input with '' 
+
+$ tcpdump -nni eth0 '((ip) and ((host 192.168.1.1 or 192.168.1.2) \
+and not (host 192.168.1.254 and 192.168.1.253)) \
+and (port 80 or 443 or 53))' 
+
+// proper shell input with escapes "\"
+
+$ tcpdump -nni eth0 \(\(ip\) and \(\(host 192.168.1.1 or 192.168.1.2\) \
+and not \(host 192.168.1.254 and 192.168.1.253\)\) \
+and \(port 80 or 443 or 53\)\)
+
+10.) Number System Conversions
+
+$ printf "%d" 0x2d
+$ printf "%x" 45
+$ printf '\x47\x45\x54\x0a'
+$ echo "GET" | hexdump -c 
+$ echo "GET" | hexdump -C 
+
+11.) Session & Flow Data
+
+iftop -i eth0.pcap // live only, replay for same effect
+
+// use -i instead of -r for interface
+$ tcpflow -c -e -r file.pcap 'tcp and port (80 or 443)'
+$ tcpflow -r file.pcap tcp and port \(80 or 443\)
+$ tcpick -r file.pcap -C -yP -h 'port (25 or 587)'
+
+// [-wRu] write both flows; [-wRC] write client flows only ; [-wRS] write server flows only
+$ tcpick -r file.pcap -wRu 
+
+// Audit Record Generation And Utilization System
+
+$ argus -r file.pcap -w file.argus
+$ ra -nnr file.argus ; ra -Z b -nnr file.argus
+$ ra -nnr file.argus - host 192.168.1.1 and port 80
+$ racluster -M rmon -m saddr -r file.argus
+$ ra -nnr file.argus -w - - port 22 | racluster -M rmon -m saddr -r - | rasort -m bytes -r -
+$ racluster -M rmon -m proto -r file.argus -w - | rasort -m pkts -r - 
+$ racluster -M rmon -m proto sport -r file.argus
+$ ragraph bytes -M 30s -r file.argus -w bytes.png
+$ ragraph pkts -M 30s -r file.argus -w pkts.png
+$ ra -nnr file2.argus -s saddr,daddr,loss | sort -nr -k 3 | head -20
+$ ragraph dbytes sbytes -M 30s -r file.argus - dst port 80 and dst port 443
+$ ragraph dbytes sbytes dport sport -fill -M 30s -r file.argus
+
+12.) Network Forensics - File Extraction
+
+$ tcpdump -nni eth0 -w image.pcap port 80 &
+$ wget http://upload.wikimedia.org/wikipedia/en/5/55/Bsd_daemon.jpg
+$ jobs
+$ kill %1
+$ tcpflow -r image.pcap
+$ foremost -v 192.168.001.002.36130-208.080.152.211.00080 \
+208.080.152.211.00080-192.168.001.006.36130
+$ cd output/jpg; ls *.jpg; gqview *.jpg
+
+$ tcpxtract -f file.pcap -o xtract/
+
+13.) Visualizations and Statistical Data
+
+// Statistics w/ RRDtool graphs
+$ ntop -f file.pcap -w 80 -W 443
+
+$ /usr/sbin/ntop -w 80 -W 443 -4 -d -u ntop \
+-t 0 -X --use-syslog=local7 -b -C \
+--output-packet-path=/var/log/ntop --create-other-packets \
+--create-suspicious-packets --local-subnets \
+192.168.1.0/24,192.168.2.0/24 \
+-o -p /etc/ntop/protocol.list -f file.pcap
+
+13.) Replay
+
+tcpreplay -M10 -i eth0 file.pcap
+netsniff-ng --in file.pcap --out eth0
+netsniff-ng --in eth0.pcap --out eth1.pcap
+trafgen --dev eth0 --conf trafgen.txf --bind-cpu 0
+
+14.) IDS - Offline Analysis
+
+snort -r file.pcap --pcap-filter='ip and tcp' -c /etc/snort/snort.conf -l .
+u2spewfoo snort.unified2.* > alert.txt
+bro -r file.pcap -f ip
+bro-cut service proto id.resp_p id.resp_h < conn.log | head   // print out fields
+bro-cut service < conn.log | sort | uniq -c | sort -n        // most used service
+bro-cut user_agent < http.log | sort -u                     // list unique of user agent strings
+bro-cut mime_type < http.log | sort -u                     // list unique MIME types
+bro-cut service id.resp_p id.resp_h < conn.log \
+    | awk '$1 == "http" && ! ($2 == 80 || $2 == 8080) { print $3 }' \
+    | sort -u // find web traffic not on port 80 or 8080
+
+15.) Editing PCAPs
+
+# change MAC's 
+tcprewrite --enet-dmac=00:44:66:FC:29:AF,00:55:22:AF:C6:37
+--enet-smac=00:66:AA:D1:32:C2,00:22:55:AC:DE:AC --infile=in.pcap
+--outfile=out.pcap
+
+# randomize IP's
+tcprewrite --seed=423 --infile=in.pcap --outfile=out.pcap
+
+# randomize IP's in argus files
+ranonymize -r in.argus -w out.argus
+

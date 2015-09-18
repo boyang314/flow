@@ -1,0 +1,146 @@
+asgprod@gfxdevcrl-ecom01:current$ hostname
+gfxdevcrl-ecom01.svr.us.jpmchase.net
+
+ 1859  export LBM_LICENSE_FILENAME=/apps/asg/ats/ecom-ume-deployment/current-uat/lbm/config/ume-v6-license.txt
+ 1860  export LBM_HOME=/apps/asg/ats/ext/29west/UMP_6.1/Linux-glibc-2.3-i686
+ 1867  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/apps/asg/ats/ext/29west/UMP_6.1/Linux-glibc-2.3-i686/lib
+ 1868  /apps/asg/ats/ext/29west/UMP_6.1/Linux-glibc-2.3-i686/bin/lbmwrcv -c /apps/asg/ats/ecom-ume-deployment/current-uat/lbm/config/ONB/mu_lbm.properties -v "APP.UAT.ECOM"
+
+/apps/asg/ats/ext/29west/UMP_6.1/Linux-glibc-2.3-i686/bin/lbmwrcv -c /apps/asg/ats/ecom-ume-deployment/current-uat/lbm/config/UAT/mu_lbm.properties -v "APP.UAT"|grep XAU|grep USD
+
+2015-09-14 15:28:44,535394 INFO [main] LBMConfiguration - Loading LBM settings from /apps/asg/ats/ecom-ume-deployment/current-uat/lbm/config/UAT/mu_lbm.properties
+2015-09-14 15:28:44,537457 INFO [main] LBMConfiguration - Loaded LBM settings from /apps/asg/ats/ecom-ume-deployment/current-uat/lbm/config/UAT/mu_lbm.properties
+2015-09-14 15:28:44,537460 INFO [main] LBMConfiguration - Loading LBM settings from /apps/asg/ats/ecom-ume-deployment/current-uat/lbm/config/UAT/interface_lbm.properties
+2015-09-14 15:28:44,538236 INFO [main] LBMConfiguration - Loaded LBM settings from /apps/asg/ats/ecom-ume-deployment/current-uat/lbm/config/UAT/interface_lbm.properties
+2015-09-14 15:28:44,538239 INFO [main] LBMConfiguration - Loading LBM settings from /apps/asg/ats/ecom-ume-deployment/current-uat/umestored/config/UAT/lbm/singlegroup_3_ume.properties
+2015-09-14 15:28:44,539096 INFO [main] LBMConfiguration - Loaded LBM settings from /apps/asg/ats/ecom-ume-deployment/current-uat/umestored/config/UAT/lbm/singlegroup_3_ume.properties
+
+===========================
+This is working
+/apps/asg/ats/ext/29west/UMP_6.1/Linux-glibc-2.5-x86_64/bin/lbmwrcv -c /apps/asg/ats/ecom-ume-deployment/current-uat/lbm/config/ONB/mu_lbm.properties -v "APP\."
+bash-4.1$ /apps/asg/ats/ext/29west/UMP_6.1/Linux-glibc-2.5-x86_64/bin/lbmwrcv -c /apps/asg/ats/ecom-ume-deployment/current-uat/lbm/config/ONB/mu_lbm.properties -v APP.ONB.ECOM.FH.SA|grep XAU
+
+bash-4.1$ export
+LBM_LICENSE_FILENAME=/apps/asg/ats/ecom-ume-deployment/current-uat/lbm/config/ume-v6-license.txt
+bash-4.1$ /apps/asg/ats/ext/29west/UMP_6.1/Linux-glibc-2.5-x86_64/bin/lbmrcv
+topic=APP
+LOG Level 5: Core-5688-1833: WARNING: Host has multiple multicast-capable
+interfaces; going to use [bond0][169.124.191.26].
+
+export LBM_PROPS_FILE="${DIRECTORY}/lbm/config/${CSVFIELD}sh-4.1$ 
+
+export LBM_PROPS_FILE=/apps/asg/ats/ecom-ume-deployment/current-uat/lbm/config/ONB/mu_lbm.properties
+
+bash-4.1$ /apps/asg/ats/ext/29west/UMP_6.1/Linux-glibc-2.5-x86_64/bin/lbmrcv topic=APP.* -vvv
+LOG Level 5: Core-5688-1833: WARNING: Host has multiple multicast-capable
+interfaces; going to use [bond0][169.124.191.26].
+
+Immediate messaging target: TCP:169.124.191.26:14391
+0.998  secs.  0     msgs/sec.  0     bps
+0.9985 secs.  0     msgs/sec.  0     bps
+0.9986 secs.  0     msgs/sec.  0     bps
+"
+
+export LBM_LICENSE_FILENAME=/apps/asg/ats/ecom-ume-deployment/current-uat/lbm/config/ume-v6-license.txt
+export LBM_HOME=/apps/asg/ats/ext/29west/UMP_6.1/Linux-glibc-2.3-i686
+
+20150911_163100: Setting LBM props filename to
+/apps/asg/ats/ecom-ume-deployment/current-uat/lbm/config/ONB/mu_lbm.properties
+20150911_163100: Setting LBM monitor props filename to
+20150911_163100: Setting LBM all props filenames to
+/apps/asg/ats/ecom-ume-deployment/current-uat/lbm/config/ONB/mu_lbm.properties,/apps/asg/ats/ecom-ume-deployment/current-uat/lbm/config/ONB/interface_lbm.properties
+20150911_163100: Setting UM XML config file to
+/apps/asg/ats/ecom-ume-deployment/current-uat/lbm/config/ONB/UM_Config.xml
+20150911_163100: Setting LBM resolution domain id to 89
+20150911_163100: Setting LBM jar to
+/apps/asg/ats/ecom-ume-deployment/current-uat/lib/lbm-jdk150_12-6.1.jar
+20150911_163100: Ethernet interface required. Binding to interface mask
+169.124.191.0/24
+2015-09-11 16:31:11,172 [main] WARN
+com.jpmorgan.fx.icomms.lbm.LBMConfiguration - Property LBM_APP is not set .
+Use Default GENERAL
+2015-09-11 16:31:11,174 [main] INFO
+com.jpmorgan.fx.icomms.lbm.LBMConfiguration - Loading LBM settings from
+/apps/asg/ats/ecom-ume-deployment/current-uat/lbm/config/ONB/mu_lbm.properties
+2015-09-11 16:31:11,183 [main] INFO
+com.jpmorgan.fx.icomms.lbm.LBMConfiguration - Loaded LBM settings from
+/apps/asg/ats/ecom-ume-deployment/current-uat/lbm/config/ONB/mu_lbm.properties
+2015-09-11 16:31:11,187 [main] INFO  com.jpmorgan.fx.icomms.lbm.LBMHelper -
+Using LBM version: UMS 6.1 [UMP-6.1] [32-bit] Build: Apr 17 2013, 15:36:23 (
+DEBUG license LBT-RM LBT-RU LBT-IPC ) WC[PCRE 8.12 2011-01-15, regex, appcb]
+2015-09-11 16:31:11,278 [main] INFO  com.jpmorgan.fx.icomms.lbm.LBMHelper -
+Creating wildcard receiver on pattern
+APP\.UAT\.ECOM\.FH\.SA\.[^\$]*\$\$[^\.]*\.MarketDeclaration
+2015-09-11 16:31:11,279 [main] INFO  com.jpmorgan.fx.IcommsLBMHelper - Shared
+MarketDataClient created for environment UAT using LBM config file
+/apps/asg/ats/ecom-ume-deployment/current-uat/lbm/config/ONB/mu_lbm.properties
+and multicast mask: 169.124.191.0/24
+2015-09-11 16:31:11,287 [main] INFO
+com.jpmorgan.fx.marketdata.MarketDataClient - Market data client subscribing
+for ATS.KREIOS FX.SPOT.XAUUSD
+2015-09-11 16:31:11,287 [main] INFO  com.jpmorgan.fx.IcommsLBMHelper - IComms
+feed handler created and subscribed for FX.SPOT.XAUUSD
+
+bash-4.1$ find /apps/asg/ -name lbmrcv
+/apps/asg/packages-stable/ext2py27-22152/g472_linux64/lbm-ume/5.3.0.4/x86_64-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages-stable/ext2py27-22152/g472_linux32/lbm-ume/5.3.0.4/ia32-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/ats/ext/29west/LBM_2.3.8/Linux-2.4-glibc-2.3-i686/bin/lbmrcv
+/apps/asg/ats/ext/29west/LBM_3.2/Linux-2.4-glibc-2.3-i686/bin/lbmrcv
+/apps/asg/ats/ext/29west/LBM_3.2/Linux-2.4-glibc-2.3-x86_64/bin/lbmrcv
+/apps/asg/ats/ext/29west/LBM_3.3.8_2.4_32/Linux-2.4-glibc-2.3-i686/bin/lbmrcv
+/apps/asg/ats/ext/29west/LBM_3.3.9/Linux-2.4-glibc-2.3-i686/bin/lbmrcv
+/apps/asg/ats/ext/29west/LBM_3.3.9/Linux-2.4-glibc-2.3-x86_64/bin/lbmrcv
+/apps/asg/ats/ext/29west/UME_3.1.3/Linux-glibc-2.3-i686/bin/lbmrcv
+/apps/asg/ats/ext/29west/UME_3.1.3/Linux-glibc-2.3-x86_64/bin/lbmrcv
+/apps/asg/ats/ext/29west/UME_3.2.7/Linux-glibc-2.3-i686/bin/lbmrcv
+/apps/asg/ats/ext/29west/UME_3.2.7/Linux-glibc-2.3-x86_64/bin/lbmrcv
+/apps/asg/ats/ext/29west/UME_3.2.8/Linux-glibc-2.3-i686/bin/lbmrcv
+/apps/asg/ats/ext/29west/UME_3.2.8/Linux-glibc-2.3-x86_64/bin/lbmrcv
+/apps/asg/ats/ext/29west/UMP_5.2.2/Linux-glibc-2.3-i686/bin/lbmrcv
+/apps/asg/ats/ext/29west/UMP_5.2.2/Linux-glibc-2.3-x86_64/bin/lbmrcv
+/apps/asg/ats/ext/29west/UMP_5.2/Linux-glibc-2.3-i686/bin/lbmrcv
+/apps/asg/ats/ext/29west/UMP_5.2/Linux-glibc-2.3-x86_64/bin/lbmrcv
+/apps/asg/ats/ext/29west/UMP_5.2.2.5-renamed/Linux-glibc-2.3-i686/bin/lbmrcv
+/apps/asg/ats/ext/29west/UMP_5.2.2.5-renamed/Linux-glibc-2.3-x86_64/bin/lbmrcv
+/apps/asg/ats/ext/29west/UMP_5.3.1/Linux-glibc-2.3-i686/bin/lbmrcv
+/apps/asg/ats/ext/29west/UMP_5.3.1/Linux-glibc-2.3-x86_64/bin/lbmrcv
+/apps/asg/ats/ext/29west/UMP_5.3.1.2/Linux-glibc-2.3-i686/bin/lbmrcv
+/apps/asg/ats/ext/29west/UMP_5.3.1.2/Linux-glibc-2.3-x86_64/bin/lbmrcv
+/apps/asg/ats/ext/29west/UMP_6.0/Linux-glibc-2.3-i686/bin/lbmrcv
+/apps/asg/ats/ext/29west/UMP_6.0/Linux-glibc-2.3-x86_64/bin/lbmrcv
+/apps/asg/ats/ext/29west/UMP_6.0/Linux-glibc-2.5-x86_64/bin/lbmrcv
+/apps/asg/ats/ext/29west/UMP_6.1/Linux-glibc-2.3-i686/bin/lbmrcv
+/apps/asg/ats/ext/29west/UMP_6.1/Linux-glibc-2.3-x86_64/bin/lbmrcv
+/apps/asg/ats/ext/29west/UMP_6.1/Linux-glibc-2.5-x86_64/bin/lbmrcv
+/apps/asg/packages/ext2py27-22080/g472_linux32/lbm-ume/5.3.0.4/ia32-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py27-22080/g472_linux64/lbm-ume/5.3.0.4/x86_64-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py27-21468/g472_linux32/lbm-ume/5.3.0.4/ia32-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py27-21468/g472_linux64/lbm-ume/5.3.0.4/x86_64-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py27-21777/g472_linux32/lbm-ume/5.3.0.4/ia32-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py27-21777/g472_linux64/lbm-ume/5.3.0.4/x86_64-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2-15658/g472_linux32/lbm-ume/5.3.0.4/ia32-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2-15658/g472_linux64/lbm-ume/5.3.0.4/x86_64-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py2764-21068/g472_linux64/lbm-ume/5.3.0.4/x86_64-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py27-21068/g472_linux32/lbm-ume/5.3.0.4/ia32-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py27-21068/g472_linux64/lbm-ume/5.3.0.4/x86_64-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2-15317/g472_linux32/lbm-ume/5.3.0.4/ia32-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2-15317/g472_linux64/lbm-ume/5.3.0.4/x86_64-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext264-15317/g472_linux64/lbm-ume/5.3.0.4/x86_64-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext264-15658/g472_linux64/lbm-ume/5.3.0.4/x86_64-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext264-18060/g472_linux64/lbm-ume/5.3.0.4/x86_64-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py27-22127/g472_linux32/lbm-ume/5.3.0.4/ia32-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py27-22127/g472_linux64/lbm-ume/5.3.0.4/x86_64-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py2764-21777/g472_linux64/lbm-ume/5.3.0.4/x86_64-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py27-21804/g472_linux32/lbm-ume/5.3.0.4/ia32-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py27-21804/g472_linux64/lbm-ume/5.3.0.4/x86_64-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py27-22146/g472_linux32/lbm-ume/5.3.0.4/ia32-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py27-22146/g472_linux64/lbm-ume/5.3.0.4/x86_64-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py27-21683/g472_linux32/lbm-ume/5.3.0.4/ia32-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py27-21683/g472_linux64/lbm-ume/5.3.0.4/x86_64-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py27-22190/g472_linux32/lbm-ume/5.3.0.4/ia32-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py27-22190/g472_linux64/lbm-ume/5.3.0.4/x86_64-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py27-22216/g472_linux32/lbm-ume/5.3.0.4/ia32-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2py27-22216/g472_linux64/lbm-ume/5.3.0.4/x86_64-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2-18060/g472_linux32/lbm-ume/5.3.0.4/ia32-linux-2.6-libc6/bin/lbmrcv
+/apps/asg/packages/ext2-18060/g472_linux64/lbm-ume/5.3.0.4/x86_64-linux-2.6-libc6/bin/lbmrcv
+

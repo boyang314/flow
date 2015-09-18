@@ -1,0 +1,24 @@
+tshark -G fields //show defined fields
+tshark -r 0903-2.pcap -V|less //very verbose
+tshark -r 0903-2.pcap -T pdml|less //also quite verbose
+tshark -r input.cap -R "ip.addr == 1.1.1.1" -T fields -e frame.number -e frame.time_delta -e ip.src -e ip.dst -e "sip.Request-Line -e sdp.media.port"
+
+
+
+ip.addr==169.26.248.19 and frame.number>49521 and frame.number<50195
+
+!tcp.analysis.keep_alive_ack and !tcp.analysis.keep_alive
+
+wireshark -r corvil.pcap -R "ip.addr==169.26.248.19 && not tcp.analysis.keep_alive && not tcp.analysis.keep_alive_ack"
+
+tshark -r corvil.pcap -R "frame.number > 49521 and frame.number < 50195"
+tshark -r corvil.pcap -R "frame.number > 50190 and frame.number < 50195" -V
+//the following is not working
+wireshark -r corvil.pcap -R "frame.number > 49521 and frame.number < 50195"
+
+ 1957  tshark -r 169.69.169.122_1.pcap  -T fields -e ip.src -e ip.ttl -e tcp.window_size
+ 1959  tshark -r 169.69.169.122_1.pcap  -T fields -e ip.src -e ip.ttl -e tcp.window_size
+ 1963  tshark -r Corvil-ny4.pcap  -T fields -e ip.src -e ip.ttl -e tcp.window_size
+
+ 1954  tshark -r 169.69.169.122_1.pcap "tcp.flags.syn eq 1" -T fields -e ip.src -e ip.ttl -e tcp.window_size
+

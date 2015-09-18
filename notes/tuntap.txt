@@ -1,0 +1,73 @@
+I'm trying to filter traffic on a tap interface.
+
+The traffic is coming from a qemu/kvm guest and can be captured i.e. with tcpdump:
+
+# tcpdump -i tap0 -v -n
+tcpdump: WARNING: tap0: no IPv4 address assigned
+tcpdump: listening on tap0, link-type EN10MB (Ethernet), capture size 65535 bytes
+12:51:15.695350 IP (tos 0x0, ttl 64, id 0, offset 0, flags [DF], proto ICMP (1), length 84)
+    192.168.10.145 > 192.168.10.81: ICMP echo request, id 3864, seq 1, length 64
+12:51:15.895316 IP (tos 0x0, ttl 64, id 46926, offset 0, flags [none], proto ICMP (1), length 84)
+    192.168.10.81 > 192.168.10.145: ICMP echo reply, id 3864, seq 1, length 64
+
+
+Now, let's see if iptables can capture this kind of traffic - let's add some ACCEPT rules for the tap0 interface:
+
+iptables -I OUTPUT -o tap0 -j ACCEPT
+iptables -I INPUT -o tap0 -j ACCEPT
+iptables -I FORWARD -o tap0 -j ACCEPT
+iptables -I FORWARD -i tap0 -j ACCEPT
+iptables -t nat -I PREROUTING -i tap0 -j ACCEPT
+iptables -t nat -I POSTROUTING -o tap0 -j ACCEPT
+iptables -t nat -I OUTPUT -o tap0 -j ACCEPT
+
+
+Let's push some traffic and see if iptables statistics caught any packets:
+
+
+# iptables -L -t nat -v -n
+Chain PREROUTING (policy ACCEPT 0 packets, 0 bytes)
+ pkts bytes target     prot opt in     out     source               destination
+    0     0 ACCEPT     all  --  tap0   *       0.0.0.0/0            0.0.0.0/0
+
+Chain OUTPUT (policy ACCEPT 57 packets, 4260 bytes)
+ pkts bytes target     prot opt in     out     source               destination
+    0     0 ACCEPT     all  --  *      tap0    0.0.0.0/0            0.0.0.0/0
+
+Chain POSTROUTING (policy ACCEPT 52 packets, 3255 bytes)
+ pkts bytes target     prot opt in     out     source               destination
+    0     0 ACCEPT     all  --  *      tap0    0.0.0.0/0            0.0.0.0/0
+
+
+
+# iptables -L  -v -n
+Chain INPUT (policy ACCEPT 11125 packets, 5245K bytes)
+ pkts bytes target     prot opt in     out     source               destination
+    0     0 ACCEPT     all  --  tap0   *       0.0.0.0/0            0.0.0.0/0
+
+Chain FORWARD (policy ACCEPT 0 packets, 0 bytes)
+ pkts bytes target     prot opt in     out     source               destination
+    0     0 ACCEPT     all  --  tap0   *       0.0.0.0/0            0.0.0.0/0
+    0     0 ACCEPT     all  --  *      tap0    0.0.0.0/0            0.0.0.0/0
+
+Chain OUTPUT (policy ACCEPT 10105 packets, 12M bytes)
+ pkts bytes target     prot opt in     out     source               destination
+    0     0 ACCEPT     all  --  *      tap0    0.0.0.0/0            0.0.0.0/0
+
+
+
+As we can see, no traffic (pkts/bytes) in the rules having this tap0 interface:
+
+tap0      Link encap:Ethernet  HWaddr EE:36:E1:A2:DA:36  
+          inet6 addr: fe80::ec36:e1ff:fea2:da36/64 Scope:Link
+          UP BROADCAST RUNNING PROMISC MULTICAST  MTU:1500  Metric:1
+          RX packets:4019 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:4084 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:500 
+          RX bytes:363208 (354.6 KiB)  TX bytes:412993 (403.3 KiB)
+
+
+Did I make some obvious mistake?
+
+How can I use iptables to filter traffic on tap interfaces?
+
