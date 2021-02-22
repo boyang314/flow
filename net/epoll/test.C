@@ -21,13 +21,15 @@ int main() {
     const char udpMsg[] = "udp::message";
     const char mcastMsg[] = "mcast::message";
     uint64_t counter = 0;
-    while(1) {
+    while(service.isRunning()) {
+        /*
         switch(counter % 3) {
         case 0: tcpClient->send(tcpMsg, sizeof(tcpMsg)); break;
         case 1: udpUnicast->send(udpMsg, sizeof(udpMsg)); break;
         case 2: mcastSender->send(mcastMsg, sizeof(mcastMsg)); break;
-        }
+        }*/
         ++counter;
+        if (counter > 12) service.stop();
         sleep(1);
     }
 }
