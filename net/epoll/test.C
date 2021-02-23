@@ -3,10 +3,12 @@
 #include <iostream>
 #include <unistd.h>
 
+StreamListener listener;
+
 int main() {
     EpollActiveObject service("test");
 
-    TcpConnectionServer* tcpServer = service.createTcpConnectionServer(4567);
+    TcpConnectionServer* tcpServer = service.createTcpConnectionServer(4567, &listener);
 
     UdpUnicast* udpUnicast = service.createUdpUnicast("udp:/bond0/localhost/5678");
 
@@ -15,7 +17,7 @@ int main() {
 
     service.start();
 
-    TcpConnection* tcpClient = service.createTcpConnection("tcp:/localhost/4567");
+    TcpConnection* tcpClient = service.createTcpConnection("tcp:/localhost/4567", &listener);
 
     const char tcpMsg[] = "tcp::message";
     const char udpMsg[] = "udp::message";

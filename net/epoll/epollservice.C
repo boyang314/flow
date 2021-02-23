@@ -3,6 +3,11 @@
 #include <string.h>
 #include <sys/epoll.h>
 
+TcpConnection::TcpConnection(int epoll, const std::string& peerAddr, StreamListener* listener) 
+: EpollService(epoll) {
+    //check parameters
+}
+
 bool TcpConnection::initialize() {
     return true;
 }
@@ -14,6 +19,11 @@ void TcpConnection::onEpollError() {
 }
 
 void TcpConnection::send(const char* msg, size_t len) {
+}
+
+TcpConnectionServer::TcpConnectionServer(int epoll, unsigned port, StreamListener* listener) 
+: EpollService(epoll) {
+    //check parameters
 }
 
 bool TcpConnectionServer::initialize() {
@@ -68,12 +78,14 @@ EpollActiveObject::EpollActiveObject(const std::string& name) : name_(name) {
     std::cout << *this << " initialized\n";
 }
 
-TcpConnection* EpollActiveObject::createTcpConnection(const std::string& addr) {
-    return nullptr;
+TcpConnection* EpollActiveObject::createTcpConnection(const std::string& peerAddr, StreamListener* listener) {
+    TcpConnection* conn = new TcpConnection(epoll_, peerAddr, listener);
+    return conn;
 }
 
-TcpConnectionServer* EpollActiveObject::createTcpConnectionServer(unsigned port) {
-    return nullptr;
+TcpConnectionServer* EpollActiveObject::createTcpConnectionServer(unsigned port, StreamListener* handler) {
+    TcpConnectionServer* server = new TcpConnectionServer(epoll_, port, handler);
+    return server;
 }
 
 UdpUnicast* EpollActiveObject::createUdpUnicast(const std::string& addr) {

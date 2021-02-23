@@ -3,6 +3,7 @@
 #include <string>
 #include <thread>
 #include <iostream>
+#include <netinet/in.h> //sockaddr_in
 
 class EpollService {
 public:
@@ -15,8 +16,16 @@ protected:
     int epoll_{0};
 };
 
+class TcpConnection;
+struct StreamListener {
+    virtual void onPacket(const char* data, size_t len, const sockaddr_in& from, TcpConnection* conn) {}
+    virtual void onConnect(TcpConnection* conn) {}
+    virtual void onDisconnect(TcpConnection* conn) {}
+};
+
 class TcpConnection : public EpollService {
 public:
+    TcpConnection(int epoll, const std::string& peerAddr, StreamListener* listener);
     bool initialize() override;
     void onEpollIn() override;
     void onEpollError() override;
@@ -25,6 +34,7 @@ public:
 
 class TcpConnectionServer : public EpollService {
 public:
+    TcpConnectionServer(int epoll, unsigned port, StreamListener* listener);
     bool initialize() override;
     void onEpollIn() override;
     void onEpollError() override;
@@ -58,8 +68,8 @@ public:
     EpollActiveObject(const std::string& name);
     ~EpollActiveObject() { stop(); }
 
-    TcpConnection* createTcpConnection(const std::string& addr);
-    TcpConnectionServer* createTcpConnectionServer(unsigned port);
+    TcpConnection* createTcpConnection(const std::string& peerAddr, StreamListener* listener);
+    TcpConnectionServer* createTcpConnectionServer(unsigned port, StreamListener* handler);
     UdpUnicast* createUdpUnicast(const std::string& addr);
     McastSender* createMcastSender(const std::string& addr);
     McastReceiver* createMcastReceiver(const std::string& addr);
