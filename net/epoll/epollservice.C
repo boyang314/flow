@@ -1,11 +1,36 @@
 #include "epollservice.H"
+#include "utils.H"
+
 #include <unistd.h>
 #include <string.h>
 #include <sys/epoll.h>
+#include <cassert>
 
 TcpConnection::TcpConnection(int epoll, const std::string& peerAddr, StreamListener* listener) 
-: EpollService(epoll) {
-    //check parameters
+: EpollService(epoll), addr_(peerAddr), listener_(listener) {
+    assert(epoll != 0);
+    assert(listener != nullptr);
+    memset(&local_, 0, sizeof(local_));
+    memset(&remote_, 0, sizeof(remote_));
+}
+
+TcpConnection::~TcpConnection() {
+    if (0 != fd_) {
+        SysUtil::removeFromEpoll(epoll_, fd_);
+        ::close(fd_);
+    }
+}
+
+bool TcpConnection::isOpen() const {
+    return 0 < fd_;
+}
+
+void TcpConnection::close() {
+    if (0 != fd_) {
+        //trigger onEpollError
+        closing_ = true;
+        ::shutdown(fd_, SHUT_RDWR);
+    }
 }
 
 bool TcpConnection::initialize() {
@@ -18,7 +43,12 @@ void TcpConnection::onEpollIn() {
 void TcpConnection::onEpollError() {
 }
 
-void TcpConnection::send(const char* msg, size_t len) {
+ssize_t TcpConnection::send(const char* msg, size_t len) {
+    return 0;
+}
+
+std::ostream& operator<<(std::ostream& os, const TcpConnection& obj) {
+    os << '<' << obj.fd_ << '@' << &obj << '|' << SysUtil::getReadableTcpAddress(obj.local_) << '|' << obj.addr_ << '>';
 }
 
 TcpConnectionServer::TcpConnectionServer(int epoll, unsigned port, StreamListener* listener) 
@@ -80,11 +110,15 @@ EpollActiveObject::EpollActiveObject(const std::string& name) : name_(name) {
 
 TcpConnection* EpollActiveObject::createTcpConnection(const std::string& peerAddr, StreamListener* listener) {
     TcpConnection* conn = new TcpConnection(epoll_, peerAddr, listener);
+    if (!conn->initialize()) { delete conn; return nullptr; }
+    std::cout << "createTcpConnection " << peerAddr << std::endl;
     return conn;
 }
 
 TcpConnectionServer* EpollActiveObject::createTcpConnectionServer(unsigned port, StreamListener* handler) {
     TcpConnectionServer* server = new TcpConnectionServer(epoll_, port, handler);
+    if (!server->initialize()) { delete server; return nullptr; }
+    std::cout << "createTcpConnectionServer port:" << port << std::endl;
     return server;
 }
 

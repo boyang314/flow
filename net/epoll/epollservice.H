@@ -4,6 +4,7 @@
 #include <thread>
 #include <iostream>
 #include <netinet/in.h> //sockaddr_in
+#include <atomic>
 
 class EpollService {
 public:
@@ -26,10 +27,27 @@ struct StreamListener {
 class TcpConnection : public EpollService {
 public:
     TcpConnection(int epoll, const std::string& peerAddr, StreamListener* listener);
+    ~TcpConnection();
+
+    bool isOpen() const;
+    void close();
+    ssize_t send(const char* msg, size_t len);
+
+    friend std::ostream& operator<<(std::ostream& os, const TcpConnection& obj);
+
+public:
     bool initialize() override;
+private: //???
     void onEpollIn() override;
     void onEpollError() override;
-    void send(const char* msg, size_t len);
+
+private:
+    const std::string addr_;
+    sockaddr_in local_;
+    sockaddr_in remote_;
+    int fd_{0};
+    StreamListener* listener_{nullptr};
+    std::atomic<bool> closing_{false};
 };
 
 class TcpConnectionServer : public EpollService {
