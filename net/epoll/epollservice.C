@@ -1,5 +1,6 @@
 #include "epollservice.H"
 #include <unistd.h>
+#include <string.h>
 #include <sys/epoll.h>
 
 bool TcpConnection::initialize() {
@@ -102,14 +103,37 @@ void EpollActiveObject::stop() {
 
 void EpollActiveObject::run() {
     std::cout << *this << " started\n";
+    //pin this thread to core and set realtime if possible
     int counter = 0;
-    while(1) {
-        sleep(1);
-        if (counter < 10) {
-            std::cout << " tick...\n";
-            ++counter;
-        } else {
+    while(1) { //unlikely thread interrupted
+        //check unlikely system condition for exit
+        struct epoll_event events[max_epoll_events_];
+        int timeoutInMs = 1000; //read from config or calculate the right value
+        int n = epoll_wait(epoll_, events, sizeof(events), timeoutInMs);
+        ++counter;
+        if (n < 0) { //unlikely
+            if (errno == EINTR) continue;
+            std::cerr << " epoll_wait error<" << errno << '|' << strerror(errno) << ">\n";
             break;
+        } else if (n == 0) {
+            std::cout << " timeout...\n";
+            if (counter >= 10) break;
+            continue;
+        }
+
+        for(int i=0; i<n; ++i) {
+            //process epoll event
+            struct epoll_event& event = events[i];
+            EpollService* service = static_cast<EpollService*>(event.data.ptr);
+            if (event.events & EPOLLIN) {
+                service->onEpollIn();
+            }
+            if (event.events & EPOLLOUT) { //unlikely
+                service->onEpollOut();
+            }
+            if (event.events & (EPOLLERR|EPOLLHUP|EPOLLRDHUP)) { //unlikely
+                service->onEpollError();
+            }
         }
     }
     std::cout << *this << " stopped\n";
