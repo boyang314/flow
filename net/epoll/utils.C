@@ -5,6 +5,7 @@
 #include <sstream>
 #include <iostream>
 #include <unistd.h>
+#include <netdb.h>
 
 void SysUtil::split(const std::string str, char delim, std::vector<std::string>& tokens) {
     if (str.empty()) return;
@@ -81,8 +82,15 @@ int SysUtil::createTcpClientFd(const std::string addr, int sendBufSize, int recv
     //set tcpKeepAlive
     //set nonBlocking
 
+    struct hostent *he;
+    if ((he = gethostbyname(ip.c_str())) == NULL) {
+        std::cerr << "failed to resolve name " << ip << std::endl;
+        return -1;
+    }
+
     memset(&remote, 0, sizeof(remote));
-    remote.sin_addr.s_addr = inet_addr(ip.c_str()); //???
+    //remote.sin_addr.s_addr = inet_addr(ip.c_str()); //just dot notation, no alias
+    memcpy(&remote.sin_addr, he->h_addr_list[0], he->h_length);
     remote.sin_family = AF_INET;
     remote.sin_port = htons(port); //must use htons
     int ret = ::connect(fd, (sockaddr*)&remote, sizeof(remote));
