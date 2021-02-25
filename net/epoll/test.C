@@ -17,13 +17,16 @@ int main() {
 
     service.start();
 
-    TcpConnection* tcpClient = service.createTcpConnection("tcp:/localhost/4567", &listener);
+    sleep(1);
+    //TcpConnection* tcpClient = service.createTcpConnection("tcp:/localhost/4567", &listener);
+    TcpConnection* tcpClient = service.createTcpConnection("tcp:/127.0.0.1/4567", &listener);
 
     const char tcpMsg[] = "tcp::message";
     const char udpMsg[] = "udp::message";
     const char mcastMsg[] = "mcast::message";
     uint64_t counter = 0;
     while(service.isRunning()) {
+        tcpClient->send(tcpMsg, sizeof(tcpMsg));
         /*
         switch(counter % 3) {
         case 0: tcpClient->send(tcpMsg, sizeof(tcpMsg)); break;
@@ -31,7 +34,7 @@ int main() {
         case 2: mcastSender->send(mcastMsg, sizeof(mcastMsg)); break;
         }*/
         ++counter;
-        if (counter > 12) service.stop();
+        //if (counter > 120) service.stop();
         sleep(1);
     }
 }
