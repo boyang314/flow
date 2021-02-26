@@ -75,7 +75,7 @@ void TcpConnection::onEpollIn() {
     const unsigned max_msg_size = 1024;
     char buf[max_msg_size];
     size_t sizeProcessed = 0;
-    while(sizeProcessed < 100 * max_msg_size) { //???
+    while(sizeProcessed < 100 * max_msg_size) { //for nonblocking multiple recv until -1 returned
         if (0 == fd_) return; //socket closed by listener or not properly removed from epoll
         if (closing_) { onEpollError(); return; }
         //throtling required?
@@ -92,7 +92,8 @@ void TcpConnection::onEpollIn() {
                 listener_->onPacket(buf, ret, remote_, this);
                 sizeProcessed += ret;
                 std::cout << fd_ << ":sizeProcessed:" << sizeProcessed << std::endl;
-                return; //break; ???
+                //return; //for blocking
+                break; //for nonblocking
         }
     }
 }
@@ -154,7 +155,7 @@ TcpConnection* TcpConnectionServer::accept(StreamListener* listener) {
         ::close(fd); return nullptr;
     }
 
-    //set fd nonblocking
+    SysUtil::setNonblocking(fd, true);
     //set fd sendBufSize
     //set fd recvBufSize
     //set fd tcpKeepAlive

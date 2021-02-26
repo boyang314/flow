@@ -10,17 +10,18 @@ int main() {
 
     TcpConnectionServer* tcpServer = service.createTcpConnectionServer(4567, &listener);
     if (!tcpServer) exit(1);
-/*
-    UdpUnicast* udpUnicast = service.createUdpUnicast("udp:/bond0/localhost/5678");
 
+    //UdpUnicast* udpUnicast = service.createUdpUnicast("udp:/bond0/localhost/5678");
+/*
     McastSender* mcastSender = service.createMcastSender("mcast:/bond0/239.1.1.1/6789");
     McastReceiver* mcastReceiver = service.createMcastReceiver("mcast:/bond0/239.1.1.1/6789");
 */
     service.start();
 
-    sleep(1);
+    //sleep(1);
     TcpConnection* tcpClient = service.createTcpConnection("tcp:/localhost/4567", &listener);
     //TcpConnection* tcpClient = service.createTcpConnection("tcp:/127.0.0.1/4567", &listener);
+    if (!tcpClient) exit(1);
 
     const char tcpMsg[] = "tcp::message";
     const char udpMsg[] = "udp::message";

@@ -10,6 +10,8 @@
 class EpollService;
 
 struct SysUtil {
+    static bool setNonblocking(int fd, bool nonblocking);
+
     static void split(const std::string str, char delim, std::vector<std::string>& tokens);
     static bool parseTcpAddress(const std::string& addr, std::string& ip, int& port);
 

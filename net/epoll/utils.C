@@ -5,7 +5,16 @@
 #include <sstream>
 #include <iostream>
 #include <unistd.h>
+#include <fcntl.h>
+#include <poll.h>
 #include <netdb.h>
+
+bool SysUtil::setNonblocking(int fd, bool nonblocking) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1) return false;
+    flags = nonblocking ? (flags | O_NONBLOCK) : (flags & ~O_NONBLOCK);
+    return (fcntl(fd, F_SETFL, flags) == 0) ? true : false;
+}
 
 void SysUtil::split(const std::string str, char delim, std::vector<std::string>& tokens) {
     if (str.empty()) return;
@@ -80,7 +89,6 @@ int SysUtil::createTcpClientFd(const std::string& addr, sockaddr_in& remote) {
     //set recvBufSize //passin
     //set tcpKeepAliveTimeSec //passin TimeSec
     //set tcpNoDelay
-    //set nonBlocking
     //connectionTimeOutSec //passin TimeSec
     
     memset(&remote, 0, sizeof(remote));
@@ -95,17 +103,44 @@ int SysUtil::createTcpClientFd(const std::string& addr, sockaddr_in& remote) {
     //memcpy(&remote.sin_addr, he->h_addr_list[0], he->h_length); //may not work correctly
     //remote.sin_addr.s_addr = inet_addr(ip.c_str()); //just dot notation, no alias
 
-    //tcp client blocking connect and nonblocking send ////
-    //
+#if 0 //nonblocking connect & send
+    SysUtil::setNonblocking(fd, true); //before 'connect', need to control timeout
     int ret = ::connect(fd, (sockaddr*)&remote, sizeof(remote));
-    if (ret < 0 && errno == EINPROGRESS) {
-        std::cerr << "connect failed to " << addr << ", try later EINPROGRESS" << std::endl;
-        //poll based retry logic with connectionTimeOutSec //???
-        ::close(fd); return -1;
-    } else if (errno != 0) {
+    /*
+    int count = 0;
+    while(ret < 0 && errno == EINPROGRESS && ++count < 5) { //simple timeout and retry
+        //poll based retry logic with connectionTimeOut
+        poll(NULL,0,100); //100ms, better check fd ready to write with timeout
+        int ret = ::connect(fd, (sockaddr*)&remote, sizeof(remote));
+    }
+    if (errno != EISCONN) {
         std::cerr << "connect failed to " << addr << '<' << errno << '|' << strerror(errno) << ">\n";
         ::close(fd); return -1;
     }
+    */
+    if (ret < 0 && errno == EINPROGRESS) { //using poll or select to monitor connection ready
+        //poll based retry logic with connectionTimeOut
+        struct pollfd pfd;
+        pfd.fd = fd;
+        pfd.events = POLLOUT | POLLERR | POLLHUP;
+        int ret = poll(&pfd, 1, 500);
+        if (ret > 0 && (pfd.revents & POLLOUT)) {
+            return fd;
+        } else {
+            std::cerr << "connect failed to " << addr << '<' << errno << '|' << strerror(errno) << ">\n";
+            ::close(fd); return -1;
+        }
+    }
+#endif
+//#if 0 //blocking connect & nonblocking send
+    //tcp client blocking connect and nonblocking send
+    int ret = ::connect(fd, (sockaddr*)&remote, sizeof(remote));
+    if (ret != 0) {
+        std::cerr << "connect failed to " << addr << ":" << strerror(errno) << std::endl;
+        ::close(fd); return -1;
+    }
+    SysUtil::setNonblocking(fd, true); //after 'connect'
+//#endif
     return fd;
 }
 
@@ -121,7 +156,7 @@ int SysUtil::createTcpServerFd(int port, sockaddr_in& local) {
     //set recvBufSize //passin para
     //set tcpNoDelay
     //set reuseAddress
-    //set nonBlocking
+    SysUtil::setNonblocking(fd, true);
 
     memset(&local, sizeof(local), 0);
     local.sin_family = AF_INET;
