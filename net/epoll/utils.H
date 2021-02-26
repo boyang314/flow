@@ -12,13 +12,14 @@ class EpollService;
 struct SysUtil {
     static void split(const std::string str, char delim, std::vector<std::string>& tokens);
     static bool parseTcpAddress(const std::string& addr, std::string& ip, int& port);
-    static const char* getPeerIp(const struct sockaddr_in& addr);
-    static std::string getReadableTcpAddress(const struct sockaddr_in& addr);
+
+    static const char* getPeerIp(const sockaddr_in& addr);
+    static std::string getReadableTcpAddress(const sockaddr_in& addr);
 
     static bool removeFromEpoll(int epoll, int fd);
     static bool registerToEpoll(int epoll, int fd, int events, EpollService* ptr);
 
-    static int createTcpClientFd(const std::string addr, int sendBufSize, int recvBufSize, int keepAliveTimeSec, int connectionTimeOutSec, struct sockaddr_in& remote);
-    static int createTcpServerFd(int port, int sendBufSize, int recvBufSize, struct sockaddr_in& local);
+    static int createTcpClientFd(const std::string& addr, sockaddr_in& remote);
+    static int createTcpServerFd(int port, sockaddr_in& local);
 };
 

@@ -29,7 +29,7 @@ struct StreamListener {
 class TcpConnection : public EpollService {
 public:
     TcpConnection(int epoll, const std::string& peerAddr, StreamListener* listener);
-    TcpConnection(int epoll, int fd, const struct sockaddr_in& remote, StreamListener* listener);
+    TcpConnection(int epoll, int fd, const sockaddr_in& remote, StreamListener* listener);
     ~TcpConnection();
 
     bool isOpen() const;
@@ -46,8 +46,10 @@ private: //???
 
 private:
     const std::string addr_;
+    std::string laddr_;
     sockaddr_in local_;
     sockaddr_in remote_;
+    char mode_;
     int fd_{0};
     StreamListener* listener_{nullptr};
     std::atomic<bool> closing_{false};
@@ -55,7 +57,7 @@ private:
 
 class TcpConnectionServer : public EpollService {
 public:
-    TcpConnectionServer(int epoll, unsigned port, StreamListener* handler);
+    TcpConnectionServer(int epoll, int port, StreamListener* handler);
     ~TcpConnectionServer();
 
     TcpConnection* accept(StreamListener* listener);
@@ -67,9 +69,9 @@ public:
     void onEpollError() override;
 
 private:
-    TcpConnection* createServerConnection(int epoll, int fd, const struct sockaddr_in& remote, StreamListener* listener);
+    TcpConnection* createServerConnection(int epoll, int fd, const sockaddr_in& remote, StreamListener* listener);
 
-    unsigned port_;
+    int port_;
     int fd_{0};
     StreamListener* handler_;
     sockaddr_in local_;

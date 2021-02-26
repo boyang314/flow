@@ -4,23 +4,26 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/epoll.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include <cassert>
 
 //TcpConnection
 
 TcpConnection::TcpConnection(int epoll, const std::string& peerAddr, StreamListener* listener) 
-: EpollService(epoll), addr_(peerAddr), listener_(listener) {
+: EpollService(epoll), addr_(peerAddr), mode_('O'), listener_(listener) {
     assert(epoll != 0);
     assert(listener != nullptr);
     memset(&local_, 0, sizeof(local_));
     memset(&remote_, 0, sizeof(remote_));
 }
 
-TcpConnection::TcpConnection(int epoll, int fd, const struct sockaddr_in& remote, StreamListener* listener) 
-: EpollService(epoll), addr_(SysUtil::getReadableTcpAddress(remote)), fd_(fd), remote_(remote), listener_(listener) {
+TcpConnection::TcpConnection(int epoll, int fd, const sockaddr_in& remote, StreamListener* listener) 
+: EpollService(epoll), addr_(SysUtil::getReadableTcpAddress(remote)), mode_('I'), fd_(fd), listener_(listener) {
     assert(epoll != 0);
     assert(listener != nullptr);
     memset(&local_, 0, sizeof(local_));
+    memcpy(&remote_, &remote, sizeof(remote));
 }
 
 TcpConnection::~TcpConnection() {
@@ -45,40 +48,39 @@ void TcpConnection::close() {
 bool TcpConnection::initialize() {
     closing_ = false;
     if (0 == fd_) {
-        //tcpSendBufSize, tcpReceiveBufSize, tcpKeepAliveTimeSec, connectTimeOutSec
-        fd_ = SysUtil::createTcpClientFd(addr_, 0, 0, 0, 1, remote_);
+        //tcpSendBufSize, tcpReceiveBufSize, tcpKeepAliveTimeSec, connectTimeOutSec/1
+        fd_ = SysUtil::createTcpClientFd(addr_, remote_);
         if (0 > fd_) {
             std::cerr << "failed to create tcp client fd to " << addr_ << std::endl;
             fd_ = 0; return false;
         }
     }
-    //init local_?
+    //resovle none dot names
     socklen_t len = sizeof(local_);
     if (getsockname(fd_, (sockaddr*)&local_, &len) < 0) {
-        std::cerr << "failed getsockname" << std::endl;
+        std::cerr << "failed getsockname for " << addr_ << " " << strerror(errno) << std::endl;
         ::close(fd_); fd_ = 0; return false;
     }
-    
+    laddr_ = SysUtil::getReadableTcpAddress(local_);
     if (!SysUtil::registerToEpoll(epoll_, fd_, EPOLLIN|EPOLLERR|EPOLLHUP|EPOLLRDHUP, static_cast<EpollService*>(this))) {
-        std::cerr << "TcpConn::init failed to register to epoll" << std::endl; 
+        std::cerr << "TcpConn::init failed to register to epoll for " << addr_ << std::endl; 
         ::close(fd_); fd_ = 0; return false;
     }
     listener_->onConnect(this);
+    std::cout << "socket:" << *this << std::endl;
     return true;
 }
 
 void TcpConnection::onEpollIn() {
-    std::cout << "TcpConn onEpollIn\n";
     const unsigned max_msg_size = 1024;
     char buf[max_msg_size];
     size_t sizeProcessed = 0;
-    while(sizeProcessed < 100 * max_msg_size) {
+    while(sizeProcessed < 100 * max_msg_size) { //???
         if (0 == fd_) return; //socket closed by listener or not properly removed from epoll
-        if (closing_) {
-            onEpollError(); return;
-        }
+        if (closing_) { onEpollError(); return; }
         //throtling required?
         int ret = recv(fd_, buf, sizeof(buf), 0);
+        std::cout << fd_ << ":recv:" << ret << std::endl;
         switch(ret) {
             case 0:
                 onEpollError(); //peer initiate shutdown
@@ -89,18 +91,19 @@ void TcpConnection::onEpollIn() {
             default:
                 listener_->onPacket(buf, ret, remote_, this);
                 sizeProcessed += ret;
-                break;
+                std::cout << fd_ << ":sizeProcessed:" << sizeProcessed << std::endl;
+                return; //break; ???
         }
     }
 }
 
 void TcpConnection::onEpollError() {
-    std::cout << "TcpConn onEpollError\n";
     int fd = fd_;
     fd_ = 0;
     if (0 < fd) {
         SysUtil::removeFromEpoll(epoll_, fd);
-        ::close(fd); //log error
+        ::close(fd);
+        std::cout << "closed connection (" << this << ") unregister from epoll " << epoll_ << std::endl;
         if (listener_) listener_->onDisconnect(this);
     }
 }
@@ -116,16 +119,16 @@ ssize_t TcpConnection::send(const char* msg, size_t len) {
 }
 
 std::ostream& operator<<(std::ostream& os, const TcpConnection& obj) {
-    os << '<' << obj.fd_ << '@' << &obj << '|' << SysUtil::getReadableTcpAddress(obj.local_) << '|' << SysUtil::getReadableTcpAddress(obj.remote_) << '>';
-    //os << '<' << obj.fd_ << '@' << &obj << '|' << SysUtil::getReadableTcpAddress(obj.local_) << '|' << obj.addr_ << '>'; //crash for server newly created socket
+    os << '<' << obj.mode_ << '|' << obj.fd_ << '@' << &obj << '|' << obj.laddr_ << '|' << obj.addr_ << '>';
 }
 
 //TcpConnectionServer
 
-TcpConnectionServer::TcpConnectionServer(int epoll, unsigned port, StreamListener* handler) 
+TcpConnectionServer::TcpConnectionServer(int epoll, int port, StreamListener* handler) 
 : EpollService(epoll), port_(port), handler_(handler) {
     assert(epoll != 0);
     assert(handler != nullptr);
+    //memset(&local_, 0, sizeof(local_)); //createServerFd will initizlize it
 }
 
 TcpConnectionServer::~TcpConnectionServer() {
@@ -143,6 +146,14 @@ TcpConnection* TcpConnectionServer::accept(StreamListener* listener) {
     }
 
     //getnameinfo of remote host
+    char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
+    if (getnameinfo((sockaddr*)&remote, len, hbuf, sizeof(hbuf), sbuf, sizeof(sbuf), NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
+        std::cout << "TcpServer@" << port_ << " accepted connection from host:" << hbuf << ":port:" << sbuf << ":fd:" << fd << std::endl;
+    } else {
+        std::cerr << "failed to getnameinfo " << strerror(errno) << std::endl;
+        ::close(fd); return nullptr;
+    }
+
     //set fd nonblocking
     //set fd sendBufSize
     //set fd recvBufSize
@@ -151,17 +162,17 @@ TcpConnection* TcpConnectionServer::accept(StreamListener* listener) {
     return createServerConnection(epoll_, fd, remote, listener);
 }
 
-TcpConnection* TcpConnectionServer::createServerConnection(int epoll, int fd, const struct sockaddr_in& remote, StreamListener* listener) {
+TcpConnection* TcpConnectionServer::createServerConnection(int epoll, int fd, const sockaddr_in& remote, StreamListener* listener) {
     TcpConnection* newConn = new TcpConnection(epoll, fd, remote, listener);
     if (!newConn->initialize()) {
-        std::cerr << "failed to creat tcp connection" << std::endl;
+        std::cerr << "failed to initialize connection " << SysUtil::getReadableTcpAddress(remote) << std::endl;
         delete newConn; return nullptr;
     }
     return newConn;
 }
 
 void TcpConnectionServer::close() {
-    std::cout << "closed server port " << port_ << std::endl;
+    std::cout << "TcpServer remove from epoll " << epoll_ << " close fd " << fd_ << std::endl;
     if (0 < fd_) {
         SysUtil::removeFromEpoll(epoll_, fd_);
         ::close(fd_); fd_ = 0;
@@ -176,30 +187,24 @@ void TcpConnectionServer::refuse() {
 }
 
 bool TcpConnectionServer::initialize() {
-    //sendBufSize, recvBufSize
-    fd_ = SysUtil::createTcpServerFd(port_, 64*1024, 64*1024, local_); //note local_ uninitialized
+    fd_ = SysUtil::createTcpServerFd(port_, local_); //local_ memset to 0 in ctor
     if (fd_ < 0) {
-        std::cerr << "Failed to create TcpServer@" << port_ << std::endl;
+        std::cerr << "Failed to create server fd port:" << port_ << std::endl;
         return false;
     }
     if (!SysUtil::registerToEpoll(epoll_, fd_, EPOLLIN|EPOLLERR|EPOLLHUP, static_cast<EpollService*>(this))) {
-        std::cerr << "Failed to register to epoll TcpServer@" << port_ << std::endl;
+        std::cerr << "Failed to register to epoll " << epoll_ << " fd " << fd_ << std::endl;
         ::close(fd_); fd_ = 0; return false;
     }
-    std::cout << "TcpSever initialized@" << port_ << std::endl;
+    std::cout << "TcpSever:epoll:" << epoll_ << ":fd:" << fd_ << ':' << SysUtil::getReadableTcpAddress(local_) << std::endl;
     return true;
 }
 
 void TcpConnectionServer::onEpollIn() {
-    TcpConnection* conn = accept(handler_);
-    if (conn != nullptr)
-        ;//std::cout << "TcpServer new connection " << *conn << std::endl;
-    else
-        std::cerr << "TcpServer fail to accept new connection " << std::endl;
+    accept(handler_);
 }
 
 void TcpConnectionServer::onEpollError() {
-    std::cout << "TcpServer onEpollError\n";
     close();
 }
 
@@ -249,21 +254,19 @@ void McastReceiver::onEpollError() {
 
 EpollActiveObject::EpollActiveObject(const std::string& name) : name_(name) {
     epoll_ = epoll_create(max_epoll_events_);
-    //error check epoll_ <= 0
+    assert(epoll_ > 0);
     std::cout << *this << " initialized\n";
 }
 
 TcpConnection* EpollActiveObject::createTcpConnection(const std::string& peerAddr, StreamListener* listener) {
     TcpConnection* conn = new TcpConnection(epoll_, peerAddr, listener);
     if (!conn->initialize()) { delete conn; return nullptr; }
-    std::cout << "createTcpConnection " << peerAddr << std::endl;
     return conn;
 }
 
 TcpConnectionServer* EpollActiveObject::createTcpConnectionServer(unsigned port, StreamListener* handler) {
     TcpConnectionServer* server = new TcpConnectionServer(epoll_, port, handler);
     if (!server->initialize()) { delete server; return nullptr; }
-    std::cout << "createTcpConnectionServer port:" << port << std::endl;
     return server;
 }
 

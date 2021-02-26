@@ -28,11 +28,11 @@ bool SysUtil::parseTcpAddress(const std::string& addr, std::string& ip, int& por
     return true;
 }
 
-const char* SysUtil::getPeerIp(const struct sockaddr_in& addr) {
+const char* SysUtil::getPeerIp(const sockaddr_in& addr) {
     return inet_ntoa(addr.sin_addr);
 }
 
-std::string SysUtil::getReadableTcpAddress(const struct sockaddr_in& addr) {
+std::string SysUtil::getReadableTcpAddress(const sockaddr_in& addr) {
     char buf[64] = {0};
     std::ostringstream oss;
     oss << "tcp:/";
@@ -62,7 +62,7 @@ bool SysUtil::registerToEpoll(int epoll, int fd, int events, EpollService* ptr) 
     return true;
 }
 
-int SysUtil::createTcpClientFd(const std::string addr, int sendBufSize, int recvBufSize, int keepAliveTimeSec, int connectionTimeOutSec, struct sockaddr_in& remote) {
+int SysUtil::createTcpClientFd(const std::string& addr, sockaddr_in& remote) {
     std::string ip; int port=0;
     if (!parseTcpAddress(addr, ip, port)) {
         std::cerr << "failed to parse address:" << addr << std::endl;
@@ -71,50 +71,54 @@ int SysUtil::createTcpClientFd(const std::string addr, int sendBufSize, int recv
 
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
-        std::cerr << "failed to create socket fd" << std::endl;
+        std::cerr << "failed to create socket fd for " << addr << std::endl;
         return -1;
     }
 
     //set fd nolinger
-    //set sendBufSize
-    //set recvBufSize
+    //set sendBufSize //passin
+    //set recvBufSize //passin
+    //set tcpKeepAliveTimeSec //passin TimeSec
     //set tcpNoDelay
-    //set tcpKeepAlive
     //set nonBlocking
-
-    struct hostent *he;
-    if ((he = gethostbyname(ip.c_str())) == NULL) {
+    //connectionTimeOutSec //passin TimeSec
+    
+    memset(&remote, 0, sizeof(remote));
+    remote.sin_family = AF_INET;
+    remote.sin_port = htons(port); //must use htons
+    struct hostent *he = gethostbyname(ip.c_str());
+    if (!he) {
         std::cerr << "failed to resolve name " << ip << std::endl;
         return -1;
     }
-
-    memset(&remote, 0, sizeof(remote));
+    bcopy((char*)he->h_addr, (char*)&remote.sin_addr.s_addr, he->h_length);
+    //memcpy(&remote.sin_addr, he->h_addr_list[0], he->h_length); //may not work correctly
     //remote.sin_addr.s_addr = inet_addr(ip.c_str()); //just dot notation, no alias
-    memcpy(&remote.sin_addr, he->h_addr_list[0], he->h_length);
-    remote.sin_family = AF_INET;
-    remote.sin_port = htons(port); //must use htons
+
+    //tcp client blocking connect and nonblocking send ////
+    //
     int ret = ::connect(fd, (sockaddr*)&remote, sizeof(remote));
     if (ret < 0 && errno == EINPROGRESS) {
-        std::cerr << "connect failed, try later EINPROGRESS" << std::endl;
-        return -1;
+        std::cerr << "connect failed to " << addr << ", try later EINPROGRESS" << std::endl;
+        //poll based retry logic with connectionTimeOutSec //???
+        ::close(fd); return -1;
     } else if (errno != 0) {
-        std::cerr << "zz connect failed <" << errno << '|' << strerror(errno) << ">\n";
-        return -1;
+        std::cerr << "connect failed to " << addr << '<' << errno << '|' << strerror(errno) << ">\n";
+        ::close(fd); return -1;
     }
-    std::cout << "connected to " << addr << '@' << port << std::endl;
     return fd;
 }
 
-int SysUtil::createTcpServerFd(int port, int sendBufSize, int recvBufSize, struct sockaddr_in& local) {
+int SysUtil::createTcpServerFd(int port, sockaddr_in& local) {
     int fd = socket(PF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
-        std::cerr << "Failed to create fd for TcpServer\n";
+        std::cerr << "failed to create fd for TcpServer " << strerror(errno) << std::endl;
         return -1;
     }
 
     //set fd nolinger
-    //set sendBufSize
-    //set recvBufSize
+    //set sendBufSize //passin para
+    //set recvBufSize //passin para
     //set tcpNoDelay
     //set reuseAddress
     //set nonBlocking
@@ -124,11 +128,11 @@ int SysUtil::createTcpServerFd(int port, int sendBufSize, int recvBufSize, struc
     local.sin_addr.s_addr = INADDR_ANY;
     local.sin_port = htons(port);
     if (bind(fd, (sockaddr*)&local, sizeof(local)) < 0) {
-        std::cerr << "Failed to bind to port@" << port << std::endl;
+        std::cerr << "failed to bind to port@" << port << " " << strerror(errno) << std::endl;
         ::close(fd); return -1;
     }
-    if (listen(fd, 8) < 0) {
-        std::cerr << "Failed to listen port@" << port << std::endl;
+    if (listen(fd, 8) < 0) { //8 backlog
+        std::cerr << "failed to listen at port@" << port << " " << strerror(errno) << std::endl;
         ::close(fd); return -1;
     }
     
