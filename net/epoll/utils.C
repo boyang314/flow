@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
+#include <netinet/tcp.h> //keepalive option
+#include <linux/sockios.h> //SIOCINQ, SIOCOUTQ
 #include <poll.h>
 #include <netdb.h>
 
@@ -18,13 +20,127 @@ bool SysUtil::setNonblocking(int fd, bool nonblocking) {
     return (fcntl(fd, F_SETFL, flags) == 0) ? true : false;
 }
 
+bool SysUtil::setMcastTTL(int fd, uint8_t ttl) {
+    if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_TTL, (void*)&ttl, sizeof(ttl)) < 0) {
+        std::cerr << "failed to set multicast_ttl fd " << fd << std::endl;
+        return false;
+    }
+    return true;
+}
+
 bool SysUtil::setMcastLoopback(int fd, bool enabled) {
     char loopback = (char)enabled;
-    if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, &loopback, sizeof(loopback)) < 0) {
+    if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, (void*)&loopback, sizeof(loopback)) < 0) {
         std::cerr << "failed to set multicast loopback fd " << fd << std::endl;
         return false;
     }
     return true;
+}
+
+bool SysUtil::setKeepalive(int fd, int timeoutSec) {
+    if (0 == timeoutSec) return true;
+    //allow connection idle for <timeoutSec>
+    //use up to 3 tcp probe to check whether connection is intact
+    //should complete with 10% of <timeoutSec>
+    int enabled = 1;
+    int probeCount = 3;
+    int probeInterval = (timeoutSec / (probeCount * 10)) + 1;
+    if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &enabled, sizeof(enabled)) < 0) {
+        std::cerr << "failed to set SO_KEEPALIVE fd " << fd << std::endl;
+        return false;
+    }
+    if (setsockopt(fd, SOL_TCP, TCP_KEEPIDLE, &timeoutSec, sizeof(timeoutSec)) < 0) {
+        std::cerr << "failed to set TCP_KEEPIDLE fd " << fd << std::endl;
+        return false;
+    }
+    if (setsockopt(fd, SOL_TCP, TCP_KEEPCNT, &probeCount, sizeof(probeCount)) < 0) {
+        std::cerr << "failed to set TCP_KEEPCNT fd " << fd << std::endl;
+        return false;
+    }
+    if (setsockopt(fd, SOL_TCP, TCP_KEEPINTVL, &probeInterval, sizeof(probeInterval)) < 0) {
+        std::cerr << "failed to set TCP_KEEPINTVL fd " << fd << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool SysUtil::setNoLinger(int fd) {
+    struct linger so_linger;
+    so_linger.l_onoff = 1;
+    so_linger.l_linger = 0;
+    if (setsockopt(fd, SOL_SOCKET, SO_LINGER, &so_linger, sizeof(so_linger)) < 0) {
+        std::cerr << "failed to set SO_LINGER fd " << fd << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool SysUtil::setReuseAddr(int fd) {
+    int flag = 1;
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char*)&flag, sizeof(flag)) < 0) {
+        std::cerr << "failed to set SO_REUSEADDR fd " << fd << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool SysUtil::setNoDelay(int fd) {
+    int flag = 1;
+    if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag)) < 0) {
+        std::cerr << "failed to set TCP_NODELAY fd " << fd << std::endl;
+        return false;
+    }
+    return true;
+}
+
+ssize_t SysUtil::getSendBufSize(int fd) {
+    ssize_t bufSize = 0;
+    socklen_t len = sizeof(bufSize);
+    if (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &bufSize, &len) < 0) {
+        std::cerr << "failed to getsockopt SO_SNDBUF " << strerror(errno) << std::endl;
+        return -1;
+    }
+    return bufSize;
+}
+
+ssize_t SysUtil::getRecvBufSize(int fd) {
+    ssize_t bufSize = 0;
+    socklen_t len = sizeof(bufSize);
+    if (getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &bufSize, &len) < 0) {
+        std::cerr << "failed to getsockopt SO_RCVBUF " << strerror(errno) << std::endl;
+        return -1;
+    }
+    return bufSize;
+}
+
+bool SysUtil::setSendBufSize(int fd, int size) {
+    if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size)) < 0) {
+        std::cerr << "failed to setsockopt SO_SNDBUF " << strerror(errno) << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool SysUtil::setRecvBufSize(int fd, int size) {
+    if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) < 0) {
+        std::cerr << "failed to setsockopt SO_RCVBUF " << strerror(errno) << std::endl;
+        return false;
+    }
+    return true;
+}
+
+ssize_t SysUtil::sendQueueSize(int fd) {
+    if (0 == fd) return -1;
+    int value = 0;
+    int error = ioctl(fd, SIOCOUTQ, &value);
+    return error ? -1 : value;
+}
+
+ssize_t SysUtil::recvQueueSize(int fd) {
+    if (0 == fd) return -1;
+    int value = 0;
+    int error = ioctl(fd, SIOCINQ, &value);
+    return error ? -1 : value;
 }
 
 void SysUtil::split(const std::string str, char delim, std::vector<std::string>& tokens) {
@@ -89,6 +205,19 @@ bool SysUtil::getNicIp(int fd, const std::string& nic, std::string& nicip) {
     return true;
 }
 
+const char* SysUtil::getNicIp(const std::string& nic) {
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    struct ifreq ifc;
+    strcpy(ifc.ifr_name, nic.c_str());
+    if (ioctl(fd, SIOCGIFADDR, &ifc) < 0) {
+        std::cerr << "failed to get nic ip " << nic << ' ' << strerror(errno) << std::endl;
+        return nullptr;
+    }
+    struct sockaddr_in* interface = (sockaddr_in*)&ifc.ifr_addr;
+    ::close(fd);
+    return inet_ntoa(interface->sin_addr);
+}
+
 bool SysUtil::removeFromEpoll(int epoll, int fd) {
     if (epoll_ctl(epoll, EPOLL_CTL_DEL, fd, nullptr) < 0) {
         std::cerr << "failed to remove fd:" << fd << " from epoll: " << epoll << '<' << errno << '|' << strerror(errno) << ">\n";
@@ -101,6 +230,15 @@ bool SysUtil::registerToEpoll(int epoll, int fd, int events, EpollService* ptr) 
     struct epoll_event ev; ev.events = events; ev.data.ptr = ptr;
     if (epoll_ctl(epoll, EPOLL_CTL_ADD, fd, &ev) < 0) {
         std::cerr << "failed to add fd:" << fd << " to epoll: " << epoll << '<' << errno << '|' << strerror(errno) << ">\n";
+        return false;
+    }
+    return true;
+}
+
+bool SysUtil::modifyEpollFlag(int epoll, int fd, int events, EpollService* ptr) {
+    struct epoll_event ev; ev.events = events; ev.data.ptr = ptr;
+    if (epoll_ctl(epoll, EPOLL_CTL_MOD, fd, &ev) < 0) {
+        std::cerr << "failed to modify fd:" << fd << " to epoll: " << epoll << '<' << errno << '|' << strerror(errno) << ">\n";
         return false;
     }
     return true;
@@ -119,12 +257,13 @@ int SysUtil::createTcpClientFd(const std::string& addr, sockaddr_in& remote) {
         return -1;
     }
 
-    //set fd nolinger
-    //set sendBufSize //passin
-    //set recvBufSize //passin
-    //set tcpKeepAliveTimeSec //passin TimeSec
-    //set tcpNoDelay
-    //connectionTimeOutSec //passin TimeSec
+    setNoLinger(fd);
+    std::cout << "sendbufsize:" << getSendBufSize(fd) << " recvbufsize:" << getRecvBufSize(fd) << std::endl;
+    //setSendBufSize(fd, 1024);
+    //setRecvBufSize(fd, 1024);
+    //std::cout << "sendbufsize:" << getSendBufSize(fd) << " recvbufsize:" << getRecvBufSize(fd) << std::endl;
+    setKeepalive(fd, 60); //timeoutSec=60
+    setNoDelay(fd);
     
     memset(&remote, 0, sizeof(remote));
     remote.sin_family = AF_INET;
@@ -138,10 +277,10 @@ int SysUtil::createTcpClientFd(const std::string& addr, sockaddr_in& remote) {
     //memcpy(&remote.sin_addr, he->h_addr_list[0], he->h_length); //may not work correctly
     //remote.sin_addr.s_addr = inet_addr(ip.c_str()); //just dot notation, no alias
 
-#if 0 //nonblocking connect & send
+    //nonblocking connect & send
     SysUtil::setNonblocking(fd, true); //before 'connect', need to control timeout
     int ret = ::connect(fd, (sockaddr*)&remote, sizeof(remote));
-    /*
+#if 0
     int count = 0;
     while(ret < 0 && errno == EINPROGRESS && ++count < 5) { //simple timeout and retry
         //poll based retry logic with connectionTimeOut
@@ -152,13 +291,14 @@ int SysUtil::createTcpClientFd(const std::string& addr, sockaddr_in& remote) {
         std::cerr << "connect failed to " << addr << '<' << errno << '|' << strerror(errno) << ">\n";
         ::close(fd); return -1;
     }
-    */
+#endif
     if (ret < 0 && errno == EINPROGRESS) { //using poll or select to monitor connection ready
         //poll based retry logic with connectionTimeOut
         struct pollfd pfd;
         pfd.fd = fd;
         pfd.events = POLLOUT | POLLERR | POLLHUP;
-        int ret = poll(&pfd, 1, 500);
+        //connectionTimeOutSec 
+        int ret = poll(&pfd, 1, 500); //size=1;timeoutSec=500ms
         if (ret > 0 && (pfd.revents & POLLOUT)) {
             return fd;
         } else {
@@ -166,8 +306,9 @@ int SysUtil::createTcpClientFd(const std::string& addr, sockaddr_in& remote) {
             ::close(fd); return -1;
         }
     }
-#endif
-//#if 0 //blocking connect & nonblocking send
+
+#if 0 
+    //blocking connect & nonblocking send
     //tcp client blocking connect and nonblocking send
     int ret = ::connect(fd, (sockaddr*)&remote, sizeof(remote));
     if (ret != 0) {
@@ -175,7 +316,7 @@ int SysUtil::createTcpClientFd(const std::string& addr, sockaddr_in& remote) {
         ::close(fd); return -1;
     }
     SysUtil::setNonblocking(fd, true); //after 'connect'
-//#endif
+#endif
     return fd;
 }
 
@@ -186,12 +327,14 @@ int SysUtil::createTcpServerFd(int port, sockaddr_in& local) {
         return -1;
     }
 
-    //set fd nolinger
-    //set sendBufSize //passin para
-    //set recvBufSize //passin para
-    //set tcpNoDelay
-    //set reuseAddress
-    SysUtil::setNonblocking(fd, true);
+    setNoLinger(fd);
+    std::cout << "sendbufsize:" << getSendBufSize(fd) << " recvbufsize:" << getRecvBufSize(fd) << std::endl;
+    //setSendBufSize(fd, 1024);
+    //setRecvBufSize(fd, 1024);
+    //std::cout << "sendbufsize:" << getSendBufSize(fd) << " recvbufsize:" << getRecvBufSize(fd) << std::endl;
+    setNoDelay(fd);
+    setReuseAddr(fd);
+    setNonblocking(fd, true);
 
     memset(&local, sizeof(local), 0);
     local.sin_family = AF_INET;
@@ -227,7 +370,7 @@ int SysUtil::createUdpUnicastFd(const std::string& addr, sockaddr_in& remote) {
         ::close(fd); return -1;
     }
 
-    //set reuseaddress
+    setReuseAddr(fd);
 
     sockaddr_in local;
     memset(&local, 0, sizeof(local));
@@ -270,15 +413,16 @@ int SysUtil::createMcastSenderFd(const std::string& addr, sockaddr_in& remote) {
         ::close(fd); return -1;
     }
 
-    //set sendBufSize
+    //setSendBufSize(fd, 1024);
+    std::cout << "mcast sendBufSize:" << getSendBufSize(fd) << std::endl;
 
     memset(&remote, 0, sizeof(remote));
     remote.sin_family = AF_INET;
     remote.sin_addr.s_addr = inet_addr(ip.c_str());
     remote.sin_port = htons(port);
 
-    //setMcastTTL
-    SysUtil::setMcastLoopback(fd, true);
+    setMcastTTL(fd, 7);
+    setMcastLoopback(fd, true);
 
     std::string nicip;
     if (!getNicIp(fd, nic, nicip)) {
@@ -307,13 +451,14 @@ int SysUtil::createMcastReceiverFd(const std::string& addr, sockaddr_in& local) 
         return -1;
     }
 
-    if (!SysUtil::setNonblocking(fd, true)) {
+    if (!setNonblocking(fd, true)) {
         std::cerr << "failed to set nonblocking to " << addr << std::endl;
         ::close(fd); return -1;
     }
 
-    //set reuseAddress
-    //set recvBufSize
+    setReuseAddr(fd);
+    //setRecvBufSize(fd, 1024);
+    std::cout << "mcast recvBufSize:" << getRecvBufSize(fd) << std::endl;
 
     memset(&local, 0, sizeof(local));
     local.sin_family = AF_INET;

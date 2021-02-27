@@ -38,7 +38,7 @@ int main() {
         case 2: mcastSender->send(mcastMsg, sizeof(mcastMsg)); break;
         }
         ++counter;
-        //if (counter > 120) service.stop();
-        sleep(5);
+        if (counter > 60) service.stop();
+        sleep(1);
     }
 }

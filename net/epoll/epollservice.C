@@ -48,7 +48,7 @@ void TcpConnection::close() {
 bool TcpConnection::initialize() {
     closing_ = false;
     if (0 == fd_) {
-        //tcpSendBufSize, tcpReceiveBufSize, tcpKeepAliveTimeSec, connectTimeOutSec/1
+        //tcpSendBufSize, tcpRecvBufSize, tcpKeepAliveTimeSec, connectTimeOutSec/1
         fd_ = SysUtil::createTcpClientFd(addr_, remote_);
         if (0 > fd_) {
             std::cerr << "failed to create tcp client fd to " << addr_ << std::endl;
@@ -156,9 +156,10 @@ TcpConnection* TcpConnectionServer::accept(StreamListener* listener) {
     }
 
     SysUtil::setNonblocking(fd, true);
-    //set fd sendBufSize
-    //set fd recvBufSize
-    //set fd tcpKeepAlive
+    //setSendBufSize
+    //setRecvBufSize
+    std::cout << "accept sendBufSize:" << SysUtil::getSendBufSize(fd) << " recvBufSize:" << SysUtil::getRecvBufSize(fd) << " sendQSize: " << SysUtil::sendQueueSize(fd) << " recvQSize:" << SysUtil::recvQueueSize(fd) << std::endl;
+    SysUtil::setKeepalive(fd, 60); //timeoutSec=60
 
     return createServerConnection(epoll_, fd, remote, listener);
 }
