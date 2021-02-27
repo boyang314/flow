@@ -5,6 +5,7 @@
 #include <iostream>
 #include <netinet/in.h> //sockaddr_in
 #include <atomic>
+#include <vector>
 
 class EpollService {
 public:
@@ -24,6 +25,12 @@ struct StreamListener {
     }
     virtual void onConnect(TcpConnection* conn) { std::cout << "StreamListener onConnect\n"; }
     virtual void onDisconnect(TcpConnection* conn) { std::cout << "StreamListener onDisconnect\n"; }
+};
+
+struct DatagramListener {
+    virtual void onPacket(const char* data, size_t len, const sockaddr_in& from) {
+        std::cout << "DatagramListener onPacket:" << data << std::endl;
+    }
 };
 
 class TcpConnection : public EpollService {
@@ -79,10 +86,22 @@ private:
 
 class UdpUnicast : public EpollService {
 public:
+    UdpUnicast(int epoll, const std::string& addr);
+    ~UdpUnicast();
+    
+    void close();
+    ssize_t send(const char* msg, size_t len);
+    bool addListener(DatagramListener* listener);
+
     bool initialize() override;
     void onEpollIn() override;
     void onEpollError() override;
-    void send(const char* msg, size_t len);
+
+private:
+    const std::string addr_;
+    int fd_{0};
+    struct sockaddr_in remote_;
+    std::vector<DatagramListener*> listeners_;
 };
 
 class McastSender : public EpollService {

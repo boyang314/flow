@@ -37,6 +37,18 @@ bool SysUtil::parseTcpAddress(const std::string& addr, std::string& ip, int& por
     return true;
 }
 
+bool SysUtil::parseUdpAddress(const std::string& addr, std::string& nic, std::string& ip, int& port) {
+    if (addr.find("udp:") != 0) return false;
+    std::vector<std::string> tokens;
+    split(addr, '/', tokens);
+    if (tokens.size() != 4) return false;
+    if (tokens[0] != "udp:") return false;
+    nic = tokens[1];
+    ip = tokens[2];
+    port = atoi(tokens[3].c_str());
+    return true;
+}
+
 const char* SysUtil::getPeerIp(const sockaddr_in& addr) {
     return inet_ntoa(addr.sin_addr);
 }
@@ -171,5 +183,48 @@ int SysUtil::createTcpServerFd(int port, sockaddr_in& local) {
         ::close(fd); return -1;
     }
     
+    return fd;
+}
+
+int SysUtil::createUdpUnicastFd(const std::string& addr, sockaddr_in& remote) {
+    std::string nic, ip; int port=0;
+    if (!parseUdpAddress(addr, nic, ip, port)) {
+        std::cerr << "failed to parse udp address:" << addr << std::endl;
+        return -1;
+    }
+
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0) {
+        std::cerr << "failed to create udp socket fd for " << addr << std::endl;
+        return -1;
+    }
+
+    if (!SysUtil::setNonblocking(fd, true)) {
+        std::cerr << "failed to set nonblocking to " << addr << std::endl;
+        ::close(fd); return -1;
+    }
+
+    //set reuseaddress
+
+    sockaddr_in local;
+    memset(&local, 0, sizeof(local));
+    local.sin_family = AF_INET;
+    local.sin_addr.s_addr = INADDR_ANY;
+    local.sin_port = htons(port);
+    if (::bind(fd, (sockaddr*)&local, sizeof(local)) < 0) {
+        std::cerr << "failed to bind fd " << addr << " " << strerror(errno) << std::endl;
+        ::close(fd); return -1;
+    }
+
+    memset(&remote, 0, sizeof(remote));
+    remote.sin_family = AF_INET;
+    remote.sin_port = htons(port);
+    struct hostent* server = gethostbyname(ip.c_str());
+    if (!server) {
+        std::cerr << "failed to gethostbyname " << ip << std::endl;
+        ::close(fd); return -1;
+    }
+    bcopy((char*)server->h_addr, (char*)&remote.sin_addr.s_addr, server->h_length);
+
     return fd;
 }

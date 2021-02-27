@@ -211,17 +211,67 @@ void TcpConnectionServer::onEpollError() {
 
 //UdpUnicast
 
+UdpUnicast::UdpUnicast(int epoll, const std::string& addr)
+: EpollService(epoll), addr_(addr) {
+}
+
+UdpUnicast::~UdpUnicast() {
+    close();
+}
+
+void UdpUnicast::close() {
+    if (fd_ > 0) {
+        SysUtil::removeFromEpoll(epoll_, fd_);
+        ::close(fd_); fd_ = 0;
+        std::cout << "close UdpUnicast (" << this << ") and remove from epoll: " << epoll_ << std::endl;
+    }
+}
+
+ssize_t UdpUnicast::send(const char* msg, size_t len) {
+    if (0 == len) return 0;
+    return ::sendto(fd_, msg, len, 0, (sockaddr*)&remote_, sizeof(remote_));
+}
+
+bool UdpUnicast::addListener(DatagramListener* listener) {
+    if (listener) {
+        listeners_.push_back(listener);
+        return true;
+    }
+    return false;
+}
+
 bool UdpUnicast::initialize() {
+    fd_ = SysUtil::createUdpUnicastFd(addr_, remote_);
+    if (fd_ < 0) {
+        std::cerr << "failed to create unicastfd for " << addr_ << std::endl;
+        return false;
+    }
+    if (!SysUtil::registerToEpoll(epoll_, fd_, EPOLLIN|EPOLLET|EPOLLERR|EPOLLHUP, static_cast<EpollService*>(this))) {
+        std::cerr << "failed to register epoll events for " << addr_ << std::endl;
+        ::close(fd_); fd_ = 0; return false;
+    }
     return true;
 }
 
 void UdpUnicast::onEpollIn() {
+    char buf[1024];
+    struct sockaddr_in remote;
+    socklen_t len = sizeof(remote);
+    while(true) {
+        int ret = ::recvfrom(fd_, buf, sizeof(buf), 0, (sockaddr*)&remote, &len);
+        if (0 == ret) {
+            static uint64_t counter = 0;
+            if (++counter % 1000000L == 1) 
+                std::cerr << "recvfrom got " << counter << " zero bytes packet" << std::endl;
+        } else if (ret > 0) {
+            std::cout << "recvfrom:" << ret << ':' << buf << std::endl;
+            for(auto& listener : listeners_) listener->onPacket(buf, ret, remote);
+        } else break;
+    }
 }
 
 void UdpUnicast::onEpollError() {
-}
-
-void UdpUnicast::send(const char* msg, size_t len) {
+    close();
 }
 
 //McastSender
@@ -272,7 +322,9 @@ TcpConnectionServer* EpollActiveObject::createTcpConnectionServer(unsigned port,
 }
 
 UdpUnicast* EpollActiveObject::createUdpUnicast(const std::string& addr) {
-    return nullptr;
+    UdpUnicast* conn = new UdpUnicast(epoll_, addr);
+    if (!conn->initialize()) { delete conn; return nullptr; }
+    return conn;
 }
 
 McastSender* EpollActiveObject::createMcastSender(const std::string& addr) {

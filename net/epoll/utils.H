@@ -14,6 +14,7 @@ struct SysUtil {
 
     static void split(const std::string str, char delim, std::vector<std::string>& tokens);
     static bool parseTcpAddress(const std::string& addr, std::string& ip, int& port);
+    static bool parseUdpAddress(const std::string& addr, std::string& nic, std::string& ip, int& port);
 
     static const char* getPeerIp(const sockaddr_in& addr);
     static std::string getReadableTcpAddress(const sockaddr_in& addr);
@@ -23,5 +24,6 @@ struct SysUtil {
 
     static int createTcpClientFd(const std::string& addr, sockaddr_in& remote);
     static int createTcpServerFd(int port, sockaddr_in& local);
+    static int createUdpUnicastFd(const std::string& addr, sockaddr_in& remote);
 };
 
