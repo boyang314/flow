@@ -264,7 +264,7 @@ void UdpUnicast::onEpollIn() {
             if (++counter % 1000000L == 1) 
                 std::cerr << "recvfrom got " << counter << " zero bytes packet" << std::endl;
         } else if (ret > 0) {
-            std::cout << "recvfrom:" << ret << ':' << buf << std::endl;
+            std::cout << fd_ << ":recvfrom:" << ret << ':' << buf << std::endl;
             for(auto& listener : listeners_) listener->onPacket(buf, ret, remote);
         } else break;
     }
@@ -276,30 +276,83 @@ void UdpUnicast::onEpollError() {
 
 //McastSender
 
+McastSender::McastSender(int epoll, const std::string& addr)
+:EpollService(epoll), addr_(addr) {}
+
+McastSender::~McastSender() { close(); }
+
+void McastSender::close() {
+    if (fd_ > 0) {
+        //sender not register with epoll
+        ::close(fd_); fd_ = 0;
+        std::cout << "close multicast sender (" << this << ")" << epoll_ << std::endl;
+    }
+}
+
+ssize_t McastSender::send(const char* msg, size_t len) {
+    if (0 == len) return 0;
+    return ::sendto(fd_, msg, len, 0, (sockaddr*)&remote_, sizeof(remote_));
+}
+
 bool McastSender::initialize() {
+    fd_ = SysUtil::createMcastSenderFd(addr_, remote_);
+    if (fd_ < 0) {
+        std::cerr << "failed to create mcastsender fd for " << addr_ << std::endl;
+        return false;
+    }
     return true;
 }
 
-void McastSender::onEpollIn() {
-}
+void McastSender::onEpollIn() {}
 
-void McastSender::onEpollError() {
-}
-
-void McastSender::send(const char* msg, size_t len) {
-}
-
-bool McastReceiver::initialize() {
-    return true;
-}
+void McastSender::onEpollError() { close(); }
 
 //McastReceiver
 
-void McastReceiver::onEpollIn() {
+McastReceiver::McastReceiver(int epoll, const std::string& addr)
+:EpollService(epoll), addr_(addr) {}
+
+McastReceiver::~McastReceiver() { close(); }
+
+void McastReceiver::close() {
+    if (fd_ > 0) {
+        SysUtil::removeFromEpoll(epoll_, fd_);
+        ::close(fd_); fd_ = 0;
+        std::cout << "close multicast receiver (" << this << ") and remove from epoll: " << epoll_ << std::endl;
+    }
 }
 
-void McastReceiver::onEpollError() {
+bool McastReceiver::initialize() {
+    fd_ = SysUtil::createMcastReceiverFd(addr_, local_);
+    if (fd_ < 0) {
+        std::cerr << "failed to create mcastreceiver fd for " << addr_ << std::endl;
+        return false;
+    }
+    if (!SysUtil::registerToEpoll(epoll_, fd_, EPOLLIN|EPOLLET|EPOLLERR|EPOLLHUP, static_cast<EpollService*>(this))) {
+        std::cerr << "failed to register epoll events for " << addr_ << std::endl;
+        ::close(fd_); fd_ = 0; return false;
+    }
+    return true;
 }
+
+void McastReceiver::onEpollIn() {
+    char buf[1024];
+    struct sockaddr_in remote;
+    socklen_t len = sizeof(remote);
+    while(true) {
+        int ret = ::recvfrom(fd_, buf, sizeof(buf), 0, (sockaddr*)&remote, &len);
+        if (0 == ret) {
+            static uint64_t counter = 0;
+            if (++counter % 1000000L == 1) 
+                std::cerr << "mcast::recvfrom got " << counter << " zero bytes packet" << std::endl;
+        } else if (ret > 0) {
+            std::cout << fd_ << ":mcast::recvfrom:" << ret << ':' << buf << std::endl;
+            //for(auto& listener : listeners_) listener->onPacket(buf, ret, remote);
+        } else break;
+    }
+}
+
+void McastReceiver::onEpollError() { close(); }
 
 //EpollActiveObject
 
@@ -328,11 +381,15 @@ UdpUnicast* EpollActiveObject::createUdpUnicast(const std::string& addr) {
 }
 
 McastSender* EpollActiveObject::createMcastSender(const std::string& addr) {
-    return nullptr;
+    McastSender* conn = new McastSender(epoll_, addr);
+    if (!conn->initialize()) { delete conn; return nullptr; }
+    return conn;
 }
 
 McastReceiver* EpollActiveObject::createMcastReceiver(const std::string& addr) {
-    return nullptr;
+    McastReceiver* conn = new McastReceiver(epoll_, addr);
+    if (!conn->initialize()) { delete conn; return nullptr; }
+    return conn;
 }
 
 void EpollActiveObject::start() {

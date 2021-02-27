@@ -11,6 +11,7 @@ class EpollService;
 
 struct SysUtil {
     static bool setNonblocking(int fd, bool nonblocking);
+    static bool setMcastLoopback(int fd, bool enabled);
 
     static void split(const std::string str, char delim, std::vector<std::string>& tokens);
     static bool parseTcpAddress(const std::string& addr, std::string& ip, int& port);
@@ -18,6 +19,7 @@ struct SysUtil {
 
     static const char* getPeerIp(const sockaddr_in& addr);
     static std::string getReadableTcpAddress(const sockaddr_in& addr);
+    static bool getNicIp(int fd, const std::string& nic, std::string& nicip);
 
     static bool removeFromEpoll(int epoll, int fd);
     static bool registerToEpoll(int epoll, int fd, int events, EpollService* ptr);
@@ -25,5 +27,7 @@ struct SysUtil {
     static int createTcpClientFd(const std::string& addr, sockaddr_in& remote);
     static int createTcpServerFd(int port, sockaddr_in& local);
     static int createUdpUnicastFd(const std::string& addr, sockaddr_in& remote);
+    static int createMcastSenderFd(const std::string& addr, sockaddr_in& remote);
+    static int createMcastReceiverFd(const std::string& addr, sockaddr_in& local);
 };
 

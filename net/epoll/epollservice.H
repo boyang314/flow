@@ -106,17 +106,37 @@ private:
 
 class McastSender : public EpollService {
 public:
+    McastSender(int epoll, const std::string& addr);
+    ~McastSender();
+
+    void close();
+    ssize_t send(const char* msg, size_t len);
+
     bool initialize() override;
     void onEpollIn() override;
     void onEpollError() override;
-    void send(const char* msg, size_t len);
+
+private:
+    const std::string addr_;
+    int fd_{0};
+    struct sockaddr_in remote_;
 };
 
 class McastReceiver : public EpollService {
 public:
+    McastReceiver(int epoll, const std::string& addr);
+    ~McastReceiver();
+
+    void close();
+
     bool initialize() override;
     void onEpollIn() override;
     void onEpollError() override;
+
+private:
+    const std::string addr_;
+    int fd_{0};
+    struct sockaddr_in local_;
 };
 
 class EpollActiveObject {

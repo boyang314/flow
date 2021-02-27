@@ -6,6 +6,8 @@
 #include <iostream>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
 #include <poll.h>
 #include <netdb.h>
 
@@ -14,6 +16,15 @@ bool SysUtil::setNonblocking(int fd, bool nonblocking) {
     if (flags == -1) return false;
     flags = nonblocking ? (flags | O_NONBLOCK) : (flags & ~O_NONBLOCK);
     return (fcntl(fd, F_SETFL, flags) == 0) ? true : false;
+}
+
+bool SysUtil::setMcastLoopback(int fd, bool enabled) {
+    char loopback = (char)enabled;
+    if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, &loopback, sizeof(loopback)) < 0) {
+        std::cerr << "failed to set multicast loopback fd " << fd << std::endl;
+        return false;
+    }
+    return true;
 }
 
 void SysUtil::split(const std::string str, char delim, std::vector<std::string>& tokens) {
@@ -64,6 +75,18 @@ std::string SysUtil::getReadableTcpAddress(const sockaddr_in& addr) {
     }
     oss << '/' << ntohs(addr.sin_port);
     return oss.str();
+}
+
+bool SysUtil::getNicIp(int fd, const std::string& nic, std::string& nicip) {
+    struct ifreq ifc;
+    strcpy(ifc.ifr_name, nic.c_str());
+    if (ioctl(fd, SIOCGIFADDR, &ifc) < 0) {
+        std::cerr << "failed to get nic ip " << nic << ' ' << strerror(errno) << std::endl;
+        return false;
+    }
+    struct sockaddr_in* interface = (sockaddr_in*)&ifc.ifr_addr;
+    nicip = inet_ntoa(interface->sin_addr);
+    return true;
 }
 
 bool SysUtil::removeFromEpoll(int epoll, int fd) {
@@ -228,3 +251,93 @@ int SysUtil::createUdpUnicastFd(const std::string& addr, sockaddr_in& remote) {
 
     return fd;
 }
+
+int SysUtil::createMcastSenderFd(const std::string& addr, sockaddr_in& remote) {
+    std::string nic, ip; int port=0;
+    if (!parseUdpAddress(addr, nic, ip, port)) {
+        std::cerr << "failed to parse udp address:" << addr << std::endl;
+        return -1;
+    }
+
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0) {
+        std::cerr << "failed to create udp socket fd for " << addr << std::endl;
+        return -1;
+    }
+
+    if (!SysUtil::setNonblocking(fd, true)) {
+        std::cerr << "failed to set nonblocking to " << addr << std::endl;
+        ::close(fd); return -1;
+    }
+
+    //set sendBufSize
+
+    memset(&remote, 0, sizeof(remote));
+    remote.sin_family = AF_INET;
+    remote.sin_addr.s_addr = inet_addr(ip.c_str());
+    remote.sin_port = htons(port);
+
+    //setMcastTTL
+    SysUtil::setMcastLoopback(fd, true);
+
+    std::string nicip;
+    if (!getNicIp(fd, nic, nicip)) {
+        std::cerr << "failed to get nicip for " << nic << std::endl;
+        ::close(fd); return -1;
+    }
+    struct in_addr iface;
+    iface.s_addr = inet_addr(nicip.c_str());
+    if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_IF, (char*)&iface, sizeof(iface)) < 0) {
+        std::cerr << "failed to set multicast interface " << addr << " " << strerror(errno) << std::endl;
+        ::close(fd); return -1;
+    }
+    return fd;
+}
+
+int SysUtil::createMcastReceiverFd(const std::string& addr, sockaddr_in& local) {
+    std::string nic, ip; int port=0;
+    if (!parseUdpAddress(addr, nic, ip, port)) {
+        std::cerr << "failed to parse udp address:" << addr << std::endl;
+        return -1;
+    }
+
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0) {
+        std::cerr << "failed to create udp socket fd for " << addr << std::endl;
+        return -1;
+    }
+
+    if (!SysUtil::setNonblocking(fd, true)) {
+        std::cerr << "failed to set nonblocking to " << addr << std::endl;
+        ::close(fd); return -1;
+    }
+
+    //set reuseAddress
+    //set recvBufSize
+
+    memset(&local, 0, sizeof(local));
+    local.sin_family = AF_INET;
+    local.sin_addr.s_addr = inet_addr(ip.c_str());
+    local.sin_port = htons(port);
+    if (::bind(fd, (sockaddr*)&local, sizeof(local)) < 0) {
+        std::cerr << "failed to bind fd " << addr << " " << strerror(errno) << std::endl;
+        ::close(fd); return -1;
+    }
+
+    struct ifreq ifc;
+    strcpy(ifc.ifr_name, nic.c_str());
+    if (ioctl(fd, SIOCGIFADDR, &ifc) < 0) {
+        std::cerr << "failed to get nic ip " << nic << ' ' << strerror(errno) << std::endl;
+        return false;
+    }
+    struct sockaddr_in* interface = (sockaddr_in*)&ifc.ifr_addr;
+    struct ip_mreq group; memset(&group, 0, sizeof(group));
+    group.imr_multiaddr.s_addr = inet_addr(ip.c_str());
+    group.imr_interface.s_addr = inet_addr(inet_ntoa(interface->sin_addr));
+    if (setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&group, sizeof(group)) < 0) {
+        std::cerr << "failed to set multicast group " << addr << " " << strerror(errno) << std::endl;
+        ::close(fd); return -1;
+    }
+    return fd;
+}
+

@@ -13,10 +13,13 @@ int main() {
 
     UdpUnicast* udpUnicast = service.createUdpUnicast("udp:/eth0/localhost/5678");
     if (!udpUnicast) exit(1);
-/*
-    McastSender* mcastSender = service.createMcastSender("mcast:/bond0/239.1.1.1/6789");
-    McastReceiver* mcastReceiver = service.createMcastReceiver("mcast:/bond0/239.1.1.1/6789");
-*/
+
+    McastSender* mcastSender = service.createMcastSender("udp:/eth0/239.1.1.1/6789");
+    if (!mcastSender) exit(1);
+
+    McastReceiver* mcastReceiver = service.createMcastReceiver("udp:/eth0/239.1.1.1/6789");
+    if (!mcastReceiver) exit(1);
+
     service.start();
 
     //sleep(1);
@@ -29,13 +32,10 @@ int main() {
     const char mcastMsg[] = "mcast::message";
     uint64_t counter = 0;
     while(service.isRunning()) {
-        //tcpClient->send(tcpMsg, sizeof(tcpMsg));
-        //udpUnicast->send(udpMsg, sizeof(udpMsg));
-        
         switch(counter % 3) {
         case 0: tcpClient->send(tcpMsg, sizeof(tcpMsg)); break;
         case 1: udpUnicast->send(udpMsg, sizeof(udpMsg)); break;
-        //case 2: mcastSender->send(mcastMsg, sizeof(mcastMsg)); break;
+        case 2: mcastSender->send(mcastMsg, sizeof(mcastMsg)); break;
         }
         ++counter;
         //if (counter > 120) service.stop();
