@@ -395,14 +395,14 @@ McastReceiver* EpollActiveObject::createMcastReceiver(const std::string& addr) {
 
 void EpollActiveObject::start() {
     if (running_) return;
-    thread_ = std::thread{[this](){ this->run();}};
     running_ = 1;
+    thread_ = std::thread{[this](){ this->run();}};
 }
 
 void EpollActiveObject::stop() {
     if (running_) {
-        thread_.join();
         running_ = 0;
+        thread_.join();
     }
 }
 
@@ -410,7 +410,7 @@ void EpollActiveObject::run() {
     std::cout << *this << " started\n";
     //pin this thread to core and set realtime if possible
     int counter = 0;
-    while(1) { //unlikely thread interrupted
+    while(running_) { //unlikely thread interrupted
         //check unlikely system condition for exit
         struct epoll_event events[max_epoll_events_];
         int timeoutInMs = 1000; //read from config or calculate the right value
