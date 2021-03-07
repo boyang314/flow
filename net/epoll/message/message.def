@@ -12,5 +12,5 @@
 #(messageType messageTypeId fileld1 field2 ...) 
 (messages
      (testMsg1 103 intField doubleField)
-     (testMsg2 104 intField doubleField stringFiled)
+     (testMsg2 104 intField doubleField stringField)
 )

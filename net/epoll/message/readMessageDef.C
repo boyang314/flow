@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cctype>
 #include <cassert>
+#include <map>
 
 void split(const char *str, std::vector<std::string>& tokens, char c=' ') {
     do {
@@ -74,6 +75,17 @@ void pass1(const char* input, const char* output) {
     ofile.close();
 }
 
+namespace {
+std::string ns;
+std::string cn;
+std::map<std::string, std::string> fieldNameToId;
+std::map<std::string, std::string> fieldNameToType;
+std::map<std::string, std::string> fieldNameToLength;
+std::map<std::string, std::string> messageTypeToId;
+typedef std::vector<std::string> ListOfFields;
+std::map<std::string, ListOfFields> messageTypeToFields;
+};
+
 void processPackage(const std::vector<std::string>& tokens) {
     //namespace and classname
     assert(tokens.size() == 5);
@@ -82,40 +94,53 @@ void processPackage(const std::vector<std::string>& tokens) {
     ofile << "\tclass " << tokens[3] << "{\n";
     ofile << "\t}\n";
     ofile << "}\n";
+    ns = tokens[2];
+    cn = tokens[3];
 }
 
 void processMessageFields(const std::vector<std::string>& tokens) {
     //vector of fields
     assert(tokens.size() > 3);
     std::ostream& ofile(std::cout);
-    ofile << "MessageFields:\n";
+    ofile << "struct " << cn << "FieldIdsEnum {\n"; 
+    ofile << "    enum TypeId {\n"; 
     for (size_t i=2; i<tokens.size(); ++i) {
         if (tokens[i] == "(") {
-            ++i; //check error
-            while (tokens[i] != ")") {
-                ofile << '\t' << tokens[i];
-                ++i;
-            }
-            ofile << '\n';
+            std::string fname = tokens[++i];
+            std::string fid = tokens[++i];
+            std::string ftype = tokens[++i]; //ensure numOfEntries
+            ofile << '\t' << fname << " = " << fid << ",\n";
+            fieldNameToId[fname] = fid;
+            fieldNameToType[fname] = ftype;
+            if (ftype == "string") fieldNameToLength[fname] = tokens[++i];
+            assert(tokens[++i] == ")");
         }
     }
+    ofile << "    };\n"; 
+    ofile << "};\n"; 
 }
 
 void processMessages(const std::vector<std::string>& tokens) {
     //vector of messages
     assert(tokens.size() > 3);
     std::ostream& ofile(std::cout);
-    ofile << "Messages:\n";
+    ofile << "struct " << cn << "TypeIdsEnum {\n"; 
+    ofile << "    enum TypeId {\n"; 
     for (size_t i=2; i<tokens.size(); ++i) {
         if (tokens[i] == "(") {
-            ++i; //check error
-            while (tokens[i] != ")") {
-                ofile << '\t' << tokens[i];
-                ++i;
+            std::string mname = tokens[++i];
+            std::string mid = tokens[++i];
+            messageTypeToId[mname] = mid;
+            ofile << '\t' << mname << " = " << mid << ",\n";
+            ListOfFields fields;
+            while (tokens[++i] != ")") {
+                fields.push_back(tokens[i]);
             }
-            ofile << '\n';
+            messageTypeToFields[mname] = fields;
         }
     }
+    ofile << "    };\n"; 
+    ofile << "};\n"; 
 }
 
 void processExpression(const std::vector<std::string>& tokens) {
@@ -124,6 +149,12 @@ void processExpression(const std::vector<std::string>& tokens) {
     else if (tokens[1] == "messageFields") processMessageFields(tokens);
     else if (tokens[1] == "messages") processMessages(tokens);
     else std::cerr << "unrecognized top level token:" << tokens[1] << '\n';
+
+    for (auto& entry : messageTypeToFields) {
+        std::cout << "struct " << entry.first << "Header {\n";
+        for (auto& field : entry.second) std::cout << '\t' << fieldNameToType[field] << " " << field << ";\n";
+        std::cout << "} __attribute__(packed);\n";
+    }
 }
 
 void pass2(const char* input, const char* output) {
