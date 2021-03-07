@@ -7,8 +7,9 @@
 #include <iterator>
 #include <cstdint>
 #include <cctype>
+#include <cassert>
 
-void split(const char *str, std::vector<std::string>& tokens, char c = ' ') {
+void split(const char *str, std::vector<std::string>& tokens, char c=' ') {
     do {
         const char *begin = str;
         while(*str != c && *str) str++;
@@ -73,6 +74,32 @@ void pass1(const char* input, const char* output) {
     ofile.close();
 }
 
+void processPackage(const std::vector<std::string>& tokens) {
+    //namespace and classname
+    assert(tokens.size() == 5);
+    std::ostream& ofile(std::cout);
+    ofile << "namespace " << tokens[2] << "{\n";
+    ofile << "\tclass " << tokens[3] << "{\n";
+    ofile << "\t}\n";
+    ofile << "}\n";
+}
+
+void processMessageFields(const std::vector<std::string>& tokens) {
+    //vector of field
+}
+
+void processMessages(const std::vector<std::string>& tokens) {
+    //vector of message
+}
+
+void processExpression(const std::vector<std::string>& tokens) {
+    assert(tokens.size() > 2);
+    if (tokens[1] == "package") processPackage(tokens);
+    else if (tokens[1] == "messageFields") processMessageFields(tokens);
+    else if (tokens[1] == "messages") processMessages(tokens);
+    else std::cerr << "unrecognized top level token:" << tokens[1] << '\n';
+}
+
 void pass2(const char* input, const char* output) {
     std::ofstream ofile(output);
     std::ifstream ifile(input);
@@ -80,18 +107,11 @@ void pass2(const char* input, const char* output) {
     while(std::getline(ifile, line)) {
         std::vector<std::string> tokens;
 		split(line.c_str(), tokens);
-		if (tokens[1] == "package") {
-            ofile << "namespace " << tokens[2] << "{\n";
-            ofile << "\tclass " << tokens[3] << "{\n";
-            ofile << "\t}\n";
-            ofile << "}\n";
-        }
-        else ofile << line << '\n';
+        processExpression(tokens);
+        ofile << line << '\n';
 	}
-
-    //namespace and classname
-    //vector of field
-    //vector of message
+    ofile.flush();
+    ofile.close();
 }
 
 int main(int argc, char** argv)
