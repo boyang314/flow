@@ -3,9 +3,97 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <stack>
+#include <iterator>
 #include <cstdint>
 #include <cctype>
+
+void split(const char *str, std::vector<std::string>& tokens, char c = ' ') {
+    do {
+        const char *begin = str;
+        while(*str != c && *str) str++;
+        tokens.push_back(std::string(begin, str));
+    } while (0 != *str++);
+}
  
+void preprocessing(const char* input, const char* output) {
+    //read full file to buf, assume reasonable size
+    std::ifstream ifile(input, std::ios::binary | std::ios::ate);
+    std::streamsize size = ifile.tellg();
+    ifile.seekg(0, std::ios::beg);
+    std::vector<char> buf(size);
+    if (!ifile.read(buf.data(), size))
+    {
+        std::cerr << "failed to read full file of " << input << '\n';
+    }
+
+    //first pass preprocessing
+    std::ofstream ofile(output);
+    for (size_t i=0; i<size; ++i) {
+        if (std::isspace(buf[i])) continue;
+        else if (buf[i] == '#') while (buf[i] != '\n') ++i;
+        else if (buf[i] == '(') ofile << " ( ";
+        else if (buf[i] == ')') ofile << " ) ";
+        else { 
+            while (!std::isspace(buf[i])) {
+                if (buf[i] == ')')
+                    ofile << " ) ";
+                else
+                    ofile << buf[i]; ++i; 
+            }
+            ofile << ' ';
+        }
+    }
+    ofile.flush();
+    ofile.close();
+}
+
+void pass1(const char* input, const char* output) {
+    //read full file to string
+    std::ifstream ifile(input);
+    std::ostringstream oss;
+    oss << ifile.rdbuf();
+    std::string pass2 = oss.str();
+    
+    //top level expression
+    std::ofstream ofile(output);
+    std::stack<size_t> parserStack;
+    for (size_t i=0; i<pass2.size(); ++i) {
+        if (pass2[i] == '(') parserStack.push(i);
+        if (pass2[i] == ')') {
+            size_t top = parserStack.top();
+            parserStack.pop();
+            if (parserStack.empty()) {
+                ofile << pass2.substr(top, i+1-top) << std::endl;
+                //ofile << std::string(pass2.begin()+top, pass2.begin()+i+1) << std::endl; //buf case
+            }
+        }
+    }
+    ofile.flush();
+    ofile.close();
+}
+
+void pass2(const char* input, const char* output) {
+    std::ofstream ofile(output);
+    std::ifstream ifile(input);
+    std::string line;
+    while(std::getline(ifile, line)) {
+        std::vector<std::string> tokens;
+		split(line.c_str(), tokens);
+		if (tokens[1] == "package") {
+            ofile << "namespace " << tokens[2] << "{\n";
+            ofile << "\tclass " << tokens[3] << "{\n";
+            ofile << "\t}\n";
+            ofile << "}\n";
+        }
+        else ofile << line << '\n';
+	}
+
+    //namespace and classname
+    //vector of field
+    //vector of message
+}
+
 int main(int argc, char** argv)
 {
     if (argc != 2) {
@@ -13,33 +101,12 @@ int main(int argc, char** argv)
         exit(1);
     }
 
-    std::ifstream file(argv[1], std::ios::binary | std::ios::ate);
-    std::streamsize size = file.tellg();
-    file.seekg(0, std::ios::beg);
+    //first pass preprocessing
+    preprocessing(argv[1], "pass1.txt");
 
-    std::vector<char> buf(size);
-    if (!file.read(buf.data(), size))
-    {
-        std::cerr << "failed to read full file of " << argv[1] << '\n';
-    }
-
-    for (size_t i=0; i<size; ++i) {
-        if (std::isspace(buf[i])) continue;
-        else if (buf[i] == '#') while (buf[i] != '\n') ++i;
-        else if (buf[i] == '(') std::cout << "( ";
-        else if (buf[i] == ')') std::cout << " )";
-        else { 
-            while (!std::isspace(buf[i])) {
-                if (buf[i] == ')')
-                    std::cout << " )";
-                else
-                    std::cout << buf[i]; ++i; 
-            }
-            std::cout << ' ';
-        }
-    }
-/* 
-    // prepare file for next snippet
-    std::ofstream("test.txt", std::ios::binary) << "abcd1\nabcd2\nabcd3";
-*/ 
+    //second pass top level structure
+    pass1("pass1.txt", "pass2.txt");
+    
+    //third pass handle expression
+    pass2("pass2.txt", "pass3.txt");
 }
