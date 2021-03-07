@@ -85,11 +85,37 @@ void processPackage(const std::vector<std::string>& tokens) {
 }
 
 void processMessageFields(const std::vector<std::string>& tokens) {
-    //vector of field
+    //vector of fields
+    assert(tokens.size() > 3);
+    std::ostream& ofile(std::cout);
+    ofile << "MessageFields:\n";
+    for (size_t i=2; i<tokens.size(); ++i) {
+        if (tokens[i] == "(") {
+            ++i; //check error
+            while (tokens[i] != ")") {
+                ofile << '\t' << tokens[i];
+                ++i;
+            }
+            ofile << '\n';
+        }
+    }
 }
 
 void processMessages(const std::vector<std::string>& tokens) {
-    //vector of message
+    //vector of messages
+    assert(tokens.size() > 3);
+    std::ostream& ofile(std::cout);
+    ofile << "Messages:\n";
+    for (size_t i=2; i<tokens.size(); ++i) {
+        if (tokens[i] == "(") {
+            ++i; //check error
+            while (tokens[i] != ")") {
+                ofile << '\t' << tokens[i];
+                ++i;
+            }
+            ofile << '\n';
+        }
+    }
 }
 
 void processExpression(const std::vector<std::string>& tokens) {
