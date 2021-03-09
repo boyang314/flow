@@ -78,6 +78,9 @@ void pass1(const char* input, const char* output) {
 namespace {
 std::string ns;
 std::string cn;
+std::string fieldIdsEnum;
+std::string fieldTypeIdsEnum{"MessageFieldTypeEnum"};
+std::string messageTypeIdsEnum;
 std::map<std::string, std::string> fieldNameToId;
 std::map<std::string, std::string> fieldNameToType;
 std::map<std::string, std::string> fieldNameToLength;
@@ -102,7 +105,8 @@ void processMessageFields(const std::vector<std::string>& tokens) {
     //vector of fields
     assert(tokens.size() > 3);
     std::ostream& ofile(std::cout);
-    ofile << "struct " << cn << "FieldIdsEnum {\n"; 
+    fieldIdsEnum = cn + "FiledIdsEnum";
+    ofile << "struct " << fieldIdsEnum << " {\n"; 
     ofile << "    enum TypeId {\n"; 
     for (size_t i=2; i<tokens.size(); ++i) {
         if (tokens[i] == "(") {
@@ -124,7 +128,8 @@ void processMessages(const std::vector<std::string>& tokens) {
     //vector of messages
     assert(tokens.size() > 3);
     std::ostream& ofile(std::cout);
-    ofile << "struct " << cn << "TypeIdsEnum {\n"; 
+    messageTypeIdsEnum = cn + "TypeIdsEnum";
+    ofile << "struct " << messageTypeIdsEnum  << " {\n"; 
     ofile << "    enum TypeId {\n"; 
     for (size_t i=2; i<tokens.size(); ++i) {
         if (tokens[i] == "(") {
@@ -150,10 +155,93 @@ void processExpression(const std::vector<std::string>& tokens) {
     else if (tokens[1] == "messages") processMessages(tokens);
     else std::cerr << "unrecognized top level token:" << tokens[1] << '\n';
 
+    //construct header
     for (auto& entry : messageTypeToFields) {
-        std::cout << "struct " << entry.first << "Header {\n";
-        for (auto& field : entry.second) std::cout << '\t' << fieldNameToType[field] << " " << field << ";\n";
-        std::cout << "} __attribute__(packed);\n";
+        std::string messageType = entry.first;
+        std::string msgHeader = messageType + "Header";
+        std::cout << "struct " << msgHeader << " {\n";
+        std::cout << "\t" << msgHeader << "(const uint32_t messageSize) : header(messageSize, " << messageTypeIdsEnum << "::" << messageType << ", " << messageTypeToFields[messageType].size() << ")";
+        for (auto& field : entry.second) {
+            std::cout << ", " << field << "(" << fieldIdsEnum << "::" << field << ", " << fieldTypeIdsEnum << "::_" << fieldNameToType[field];
+            if (fieldNameToType[field] == "string") {
+                std::cout << ", " << fieldNameToLength[field] << ")";
+            } else {
+                std::cout << ", sizeof(" << fieldNameToType[field] << "))";
+            }
+        }
+        std::cout << " {}\n";
+        std::cout << "\tbool operator==(const " << msgHeader << " &other) const { return memcmp(this, &other, sizeof(*this)) == 0; }\n";
+        std::cout << "\tMessageHeader header;\n";
+        for (auto& field : entry.second) std::cout << '\t' << "MessageFieldInfo " << field << ";\n";
+        std::cout << "} __attribute__((packed));\n";
+    }
+
+    //construct class
+    for (auto& entry : messageTypeToFields) {
+        std::string messageType = entry.first;
+        std::string msgHeader = messageType + "Header";
+
+        std::cout << "struct " << messageType << " {\n";
+
+        //first ctor
+        std::cout << '\t' << messageType << "() : header_(sizeof(*this))";
+        for (auto& field : entry.second) {
+            std::string fieldName = field + "_";
+            std::cout << ", " << fieldName << "()";
+        }
+        std::cout << " {}\n";
+
+        //second ctor
+        std::cout << '\t' << messageType << "(";
+        int count = 0;
+        for (auto& field : entry.second) {
+            if (fieldNameToType[field] == "string") {
+                std::cout << "const char* " << field;
+            } else {
+                std::cout << fieldNameToType[field] << " " << field;
+            }
+            if (++count != entry.second.size()) std::cout << ", ";
+        }
+        std::cout << ") : header_(sizeof(*this))";
+        std::vector<std::string> strFields;
+        for (auto& field : entry.second) {
+            std::string fieldName = field + "_";
+            std::cout << ", " << fieldName << "(";
+            if (fieldNameToType[field] == "string") {
+                std::cout << ")";
+                strFields.push_back(field);
+            } else {
+                std::cout << field << ")";
+            }
+        }
+        std::cout << " {";
+        for (auto& field : strFields) {
+            std::string fieldName = field + "_";
+            int len = atoi(fieldNameToLength[field].c_str());
+            std::cout << "\n\t" << "strncpy(" << fieldName << ", " << field << ", " << len-1 << ");";
+            std::cout << "\n\t" << fieldName << "[" << len-1 << "] = '\\0'; ";
+        }
+        std::cout << "}\n";
+
+        //third ctor
+        std::cout << '\t' << messageType << "(MessageInputBuffer& messasgeBuffer) : header_(sizeof(*this))";
+        for (auto& field : entry.second) {
+            std::string fieldName = field + "_";
+            std::cout << ", " << fieldName << "()";
+        }
+        std::cout << " { fromMessageBuffer(messageBuffer); }\n";
+
+        //variable
+        std::cout << '\t' <<  msgHeader << " header_;\n";
+        for (auto& field : entry.second) {
+            std::string fieldName = field + "_";
+            if (fieldNameToType[field] == "string") {
+                std::cout << '\t' << "char " << fieldName << "[" << fieldNameToLength[field] << "];\n";
+            } else {
+                std::cout << '\t' << fieldNameToType[field] << " " << fieldName << ";\n";
+            }
+        }
+        std::cout << "} __attribute__((packed));\n";
     }
 }
 

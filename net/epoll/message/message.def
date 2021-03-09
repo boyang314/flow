@@ -1,3 +1,4 @@
+#basic validation no dup Ids, dup Names
 #(package namespace classname)
 (package test testMessage)
 
@@ -7,10 +8,11 @@
     (intField 100 int)
     (doubleField 101 double) #another comment
     (stringField 102 string 32)
+    (stringField2 103 string 28)
 )
 
 #(messageType messageTypeId fileld1 field2 ...) 
 (messages
      (testMsg1 103 intField doubleField)
-     (testMsg2 104 intField doubleField stringField)
+     (testMsg2 104 intField doubleField stringField stringField2)
 )
