@@ -93,10 +93,18 @@ void processPackage(const std::vector<std::string>& tokens) {
     //namespace and classname
     assert(tokens.size() == 5);
     std::ostream& ofile(std::cout);
+    /*
     ofile << "namespace " << tokens[2] << "{\n";
     ofile << "\tclass " << tokens[3] << "{\n";
     ofile << "\t}\n";
     ofile << "}\n";
+    */
+    ofile << "#include \"GenericMessage.H\"\n";
+    ofile << "#include \"MessageInputBuffer.H\"\n";
+    ofile << "#include \"MessageHeader.H\"\n";
+    ofile << "#include \"MessageFieldInfo.H\"\n";
+    ofile << "#include <stdint.h>\n";
+    ofile << "#include <string.h>\n";
     ns = tokens[2];
     cn = tokens[3];
 }
@@ -224,12 +232,67 @@ void processExpression(const std::vector<std::string>& tokens) {
         std::cout << "}\n";
 
         //third ctor
-        std::cout << '\t' << messageType << "(MessageInputBuffer& messasgeBuffer) : header_(sizeof(*this))";
+        std::cout << '\t' << messageType << "(MessageInputBuffer& messageBuffer) : header_(sizeof(*this))";
         for (auto& field : entry.second) {
             std::string fieldName = field + "_";
             std::cout << ", " << fieldName << "()";
         }
         std::cout << " { fromMessageBuffer(messageBuffer); }\n";
+
+        //cast
+        std::cout << "\tstatic bool canCast(MessageInputBuffer& messageBuffer) {\n";
+        std::cout << "\t\tconst char* buffer = messageBuffer.getBuffer();\n";
+        std::cout << "\t\tstatic " << msgHeader << " staticHeader(sizeof(" << messageType << "));\n";
+        std::cout << "\t\treturn staticHeader == *((" << msgHeader << "*)buffer);\n";
+        std::cout << "\t}\n";
+
+        //type match
+        std::cout << "\tstatic bool typeMatch(MessageInputBuffer& messageBuffer) {\n";
+        std::cout << "\t\treturn messageBuffer.getMessageType() == " << messageTypeIdsEnum << "::" << messageType << ";\n";
+        std::cout << "\t}\n";
+
+        //to generic message
+        std::cout << "\tvoid toGenericMessage(GenericMessage& message) const {\n";
+        for (auto& field : entry.second) {
+            std::string fieldName = field + "_";
+            std::string fieldType = fieldNameToType[field];
+            if (fieldType == "string") {
+                std::cout << "\t\tmessage.setString(" << fieldNameToId[field] << ", " << fieldName << ", " << fieldNameToLength[field] << ");\n";
+            } else {
+                std::cout << "\t\tmessage.set<" << fieldType << ">(" << fieldNameToId[field] << ", " << fieldName << ");\n";
+            }
+        }
+        std::cout << "\t}\n";
+
+        //from input buffer
+        std::cout << "\tvoid fromMessageBuffer(MessageInputBuffer& messageBuffer) {\n";
+        std::cout << "\t\tconst char* buffer = messageBuffer.getBuffer();\n";
+        std::cout << "\t\t" << msgHeader << "* msgHeader = " << "(" << msgHeader << "*)buffer;\n";
+        std::cout << "\t\tif (header_ == *msgHeader) {\n";
+        std::cout << "\t\t\tmemcpy((char*)this, buffer, sizeof(*this));\n";
+        std::cout << "\t\t} else {\n";
+        std::cout << "\t\t\twhile (messageBuffer.hasMoreFields()) {\n";
+        std::cout << "\t\t\t\tMessageFieldInfo fieldInfo = messageBuffer.nextFieldInfo();\n";
+        std::cout << "\t\t\t\tswitch (fieldInfo.getFieldId()) {\n";
+        for (auto& field : entry.second) {
+            std::string fieldName = field + "_";
+            std::string fieldType = fieldNameToType[field];
+            std::cout << "\t\t\t\tcase " << fieldIdsEnum << "::" << field << ":\n";
+            if (fieldType == "string") {
+                std::cout << "\t\t\t\t\tif (fieldInfo.getFieldType() == MessageFieldType::_" << fieldNameToType[field] << ") messageBuffer.getString<" << fieldNameToLength[field] << ">(fieldInfo.getFieldLength(), " << fieldName << ");\n";
+            } else {
+                std::cout << "\t\t\t\t\tif (fieldInfo.getFieldType() == MessageFieldType::_" << fieldNameToType[field] << ") " << fieldName << " = messageBuffer.get<" << fieldNameToType[field] << ">();\n";
+            }
+            std::cout << "\t\t\t\t\telse messageBuffer.skipField(fieldInfo);\n";
+            std::cout << "\t\t\t\t\tbreak;\n";
+        }
+        std::cout << "\t\t\t\tdefault:\n";
+        std::cout << "\t\t\t\t\tmessageBuffer.skipField(fieldInfo);\n";
+        std::cout << "\t\t\t\t\tbreak;\n";
+        std::cout << "\t\t\t\t}\n";
+        std::cout << "\t\t\t}\n";
+        std::cout << "\t\t}\n";
+        std::cout << "\t}\n";
 
         //variable
         std::cout << '\t' <<  msgHeader << " header_;\n";
