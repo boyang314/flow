@@ -4,6 +4,10 @@
 #include <string>
 
 struct MessageInputBuffer {
+    MessageInputBuffer(const char* buffer, const uint32_t len) : buffer_(buffer), bufferSize_(len), messageBuffer_(0), headerReadPosition_(0), dataReadPosition_(0), messageType_(0), currentFields_(0), numOfFields_(0) { initRead(); }
+    ~MessageInputBuffer() {}
+
+    void initRead();
 
     template<typename T> 
     T get() { return getValue<T>(); }
@@ -20,15 +24,15 @@ struct MessageInputBuffer {
 
     bool hasMoreFields() { return currentFields_ < numOfFields_; }
     void skipField(MessageFieldInfo fieldInfo) { dataReadPosition_ += fieldInfo.getFieldLength(); }
-    uint16_t getMessageType() { return messageType_; }
-    uint16_t getNumOfFields() { return numOfFields_; }
-    const char* getBuffer() { return messageBuffer_; }
-    const char* getRawBuffer() { return buffer_; }
-    uint32_t getRawBufferSize() { return bufferSize_; }
+    uint16_t getMessageType() const { return messageType_; }
+    uint16_t getNumOfFields() const { return numOfFields_; }
+    const char* getBuffer() const { return messageBuffer_; }
+    const char* getRawBuffer() const { return buffer_; }
+    uint32_t getRawBufferSize() const { return bufferSize_; }
     
 private:
-    //MessageInputbuffer(const MessageInputBuffer&);
-    //MessageInputbuffer& operator=(const MessageInputBuffer&);
+    MessageInputBuffer(const MessageInputBuffer&);
+    MessageInputBuffer& operator=(const MessageInputBuffer&);
 
     template<typename T>
     T getValue() {

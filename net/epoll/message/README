@@ -1,1 +1,3 @@
 ./readMessageDef message.def
+
+GenericMessage + GenericMessageCache + Lister //serve as generic store. Not essential for serialization/deserialization of generated msg. canCast also only used for generic message
