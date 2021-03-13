@@ -99,6 +99,7 @@ void processPackage(const std::vector<std::string>& tokens) {
     ofile << "\t}\n";
     ofile << "}\n";
     */
+    ofile << "#pragma once\n\n";
     ofile << "#include \"GenericMessage.H\"\n";
     ofile << "#include \"MessageInputBuffer.H\"\n";
     ofile << "#include \"MessageHeader.H\"\n";
