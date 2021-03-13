@@ -20,13 +20,22 @@ struct GenericMessage {
     uint16_t getMessageType() const { return messageType_; }
     void setMessageType(const uint16_t messageType) { messageType_ = messageType; }
 
-    MessageFieldValue getFieldValue(const uint16_t fieldId) const;
-    void setFieldValue(const uint16_t fieldId, const MessageFieldValue& value);
+    MessageFieldValue getFieldValue(const uint16_t fieldId) const {
+        auto iter = fieldMap_.find(fieldId);
+        return (iter != fieldMap_.end()) ? fields_[iter->second] : MessageFieldValue();
+    }
+    void setFieldValue(const uint16_t fieldId, const MessageFieldValue& value) {
+        auto iter = fieldMap_.find(fieldId);
+        if (iter == fieldMap_.end()) {
+            fieldMap_[fieldId] = fields_.size();
+            fields_.push_back(value);
+        } else fields_[iter->second] = value;
+    }
 
     //typed setter
     template<typename T>
-    void set(uint16_t id, const T& val);
-    void setString(uint16_t id, const char*, uint16_t len);
+    void set(uint16_t id, const T& val) { setFieldValue(id, MessageFieldValue(val)); }
+    void setString(uint16_t id, const char* val, uint16_t len) { setFieldValue(id, MessageFieldValue(val, len)); }
 
 private: 
     GenericMessage(const GenericMessage& other);
