@@ -1,1 +1,1 @@
-g++ -g -o test *.C -lpthread
+g++ -g -o test test.cpp *.C -lpthread
