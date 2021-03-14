@@ -5,7 +5,7 @@
 class persistedBuffer {
 
 public:
-    persistedBuffer(uint32_t defaultBufferSize);
+    persistedBuffer(const char* name, uint32_t defaultBufferSize);
     ~persistedBuffer();
     uint32_t add(char *buf, uint16_t size);
     uint32_t getSize() { return writePos_; }

@@ -11,8 +11,8 @@
 #include <cstring>
 #include <iostream>
 
-persistedBuffer::persistedBuffer(uint32_t defaultBufferSize) : messageBuffer_(NULL), messageBufferSize_(0), msgCount_(0), writePos_(0), fd_(-1) {
-    fd_ = shm_open("/persistedBuffer", O_CREAT|O_RDWR|O_TRUNC, S_IRUSR|S_IWUSR);
+persistedBuffer::persistedBuffer(const char* name, uint32_t defaultBufferSize) : messageBuffer_(NULL), messageBufferSize_(0), msgCount_(0), writePos_(0), fd_(-1) {
+    fd_ = shm_open(name, O_CREAT|O_RDWR|O_TRUNC, S_IRUSR|S_IWUSR);
     if (fd_ == -1) {
         perror("error in shm_open");
         exit(-1);
