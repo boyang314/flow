@@ -1,3 +1,54 @@
 start with epollservice and test program
 02/24 tcp client&server added, need to cleanup and set proper options/nolinger/reuse
+02/28 cleanup, added upd unicast & multicast, added utility functions
+//from epoll man page, level vs. edge trigger
+       An application that employs the EPOLLET flag should use nonblocking file descriptors to avoid having a  blocking  read  or
+       write  starve  a  task  that  is  handling multiple file descriptors.  The suggested way to use epoll as an edge-triggered
+       (EPOLLET) interface is as follows:
 
+              i   with nonblocking file descriptors; and
+
+              ii  by waiting for an event only after read(2) or write(2) return EAGAIN.
+
+       By contrast, when used as a level-triggered interface (the default, when EPOLLET is not  specified),  epoll  is  simply  a
+       faster poll(2), and can be used wherever the latter is used since it shares the same semantics.
+
+       Since even with edge-triggered epoll, multiple events can be generated upon receipt of multiple chunks of data, the caller
+       has the option to specify the EPOLLONESHOT flag, to tell epoll to disable the associated file descriptor after the receipt
+       of  an  event with epoll_wait(2).  When the EPOLLONESHOT flag is specified, it is the caller's responsibility to rearm the
+       file descriptor using epoll_ctl(2) with EPOLL_CTL_MOD.
+
+//from stackoverflow ONESHOT option
+       When the EPOLLONESHOT flag is selected and you have pulled an event for a socket, then the socket won't get removed from epoll as many think but its events get disabled. You can enable them again using epoll_ctl / EPOLL_CTL_MOD.
+
+       An example case when the EPOLLONESHOT behavior comes handy is when you've read the available data from a socket into a buffer. That buffer would be emptied independently, but until it isn't empty, you have to disable the socket events, even if the socket has additional data. Then after the buffer got used and emptied, you can re-enable the socket.
+
+       The difference between the edge- and level-triggered "one shot" behaviors come only when you re-enable the socket. An example:
+
+       1. The socket receives 7K data (for now it's stored in a kernel buffer)
+       2. You wait for an input event, then the socket events get disabled due to the EPOLLONESHOT.
+       3. You read 4K into an application level buffer.
+       4. Later the application buffer gets used and emptied. You re-enable the socket with epoll_ctl / EPOLL_CTL_MOD.
+
+       Level-triggered EPOLLONESHOT:
+
+       5. Since 3K data is still present in the kernel buffers, the event is triggered again.
+
+       Edge-triggered EPOLLONESHOT:
+
+       5. It won't trigger an event again for the available data. You must test it by reading, and waiting for EAGAIN / EWOULDBLOCK.
+
+//from epoll_ctl man page
+	   EPOLLONESHOT (since Linux 2.6.2)
+	   Sets the one-shot behavior for the associated file  descriptor.   This  means  that
+       after  an  event is pulled out with epoll_wait(2) the associated file descriptor is
+       internally disabled and no other events will be reported by  the  epoll  interface.
+       The user must call epoll_ctl() with EPOLL_CTL_MOD to rearm the file descriptor with
+       a new event mask.
+
+oneshot and onload
+
+payload
+store
+
+thread
