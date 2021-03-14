@@ -7,7 +7,7 @@ class persistedBuffer {
 public:
     persistedBuffer(const char* name, uint32_t defaultBufferSize);
     ~persistedBuffer();
-    uint32_t add(char *buf, uint16_t size);
+    uint32_t add(const char *buf, uint16_t size);
     uint32_t getSize() { return writePos_; }
     uint32_t getNumOfMsgs() { return msgCount_; }
     void clean();

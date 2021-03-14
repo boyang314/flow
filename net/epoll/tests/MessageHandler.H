@@ -4,6 +4,7 @@
 #include "messaging/MessageHeader.H"
 #include "messaging/MessageInputBuffer.H"
 #include "messaging/test.H"
+#include "persistence/persistedBuffer.H"
 #include <assert.h>
 
 #define BUFSZ 65536
@@ -35,6 +36,11 @@ struct DatagramHandler : public DatagramListener {
     DatagramHandler() {
         memset(buffer_, 0, BUFSZ);
         bufferEnd_ = 0;
+        pbuf_ = new persistedBuffer("dgramL", 1024); 
+    }
+    ~DatagramHandler() {
+        delete pbuf_;
+        pbuf_ = nullptr;
     }
     virtual void onPacket(const char* data, size_t len, const sockaddr_in& from) override {
         if (bufferEnd_+len > BUFSZ) {
@@ -53,6 +59,7 @@ struct DatagramHandler : public DatagramListener {
                 char* messageBuf = new char[sz];
                 memmove(messageBuf, buffer_+readPos, sz);
                 MessageInputBuffer input(messageBuf, sz);
+                if (pbuf_) pbuf_->add(input.getRawBuffer(), input.getRawBufferSize());
                 handleMessageInputBuffer(input);
                 readPos += sz;
             } else {
@@ -71,6 +78,7 @@ struct DatagramHandler : public DatagramListener {
 private:
     char buffer_[BUFSZ];
     uint16_t bufferEnd_;
+    persistedBuffer* pbuf_;
 };
 
 struct MessageHandler : public StreamListener {

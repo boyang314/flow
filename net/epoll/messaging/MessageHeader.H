@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <iostream>
 
 struct MessageHeader {
     MessageHeader() : headerDetail_(0) {}
@@ -26,6 +27,8 @@ struct MessageHeader {
 
     void setup(const uint16_t msgType, const uint16_t numOfFields) {
         headerDetail_ = (((uint64_t)msgType) << 16) | ((uint64_t)numOfFields); }
+
+    friend std::ostream& operator <<(std::ostream& os, const MessageHeader& header);
     
 private:
     uint64_t headerDetail_;

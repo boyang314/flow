@@ -40,7 +40,7 @@ persistedBuffer::~persistedBuffer() {
     //shm_unlink, no we still need to reload this file
 }
 
-uint32_t persistedBuffer::add(char *buf, uint16_t size) {
+uint32_t persistedBuffer::add(const char *buf, uint16_t size) {
     if (messageBufferSize_ - writePos_ < size) resize();
     memcpy(messageBuffer_ + writePos_, buf, size);
     writePos_ += size;
