@@ -128,6 +128,7 @@ public:
     ~McastReceiver();
 
     void close();
+    bool addListener(DatagramListener* listener);
 
     bool initialize() override;
     void onEpollIn() override;
@@ -137,6 +138,7 @@ private:
     const std::string addr_;
     int fd_{0};
     struct sockaddr_in local_;
+    std::vector<DatagramListener*> listeners_;
 };
 
 class EpollActiveObject {

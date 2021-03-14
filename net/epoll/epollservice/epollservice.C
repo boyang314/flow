@@ -80,7 +80,7 @@ void TcpConnection::onEpollIn() {
         if (closing_) { onEpollError(); return; }
         //throtling required?
         int ret = recv(fd_, buf, sizeof(buf), 0);
-        std::cout << fd_ << ":recv:" << ret << std::endl;
+        //std::cout << fd_ << ":recv:" << ret << std::endl;
         switch(ret) {
             case 0:
                 onEpollError(); //peer initiate shutdown
@@ -91,7 +91,7 @@ void TcpConnection::onEpollIn() {
             default:
                 listener_->onPacket(buf, ret, remote_, this);
                 sizeProcessed += ret;
-                std::cout << fd_ << ":sizeProcessed:" << sizeProcessed << std::endl;
+                //std::cout << fd_ << ":sizeProcessed:" << sizeProcessed << std::endl;
                 //return; //for blocking
                 break; //for nonblocking
         }
@@ -265,7 +265,7 @@ void UdpUnicast::onEpollIn() {
             if (++counter % 1000000L == 1) 
                 std::cerr << "recvfrom got " << counter << " zero bytes packet" << std::endl;
         } else if (ret > 0) {
-            std::cout << fd_ << ":recvfrom:" << ret << ':' << buf << std::endl;
+            //std::cout << fd_ << ":recvfrom:" << ret << ':' << buf << std::endl;
             for(auto& listener : listeners_) listener->onPacket(buf, ret, remote);
         } else break;
     }
@@ -323,6 +323,14 @@ void McastReceiver::close() {
     }
 }
 
+bool McastReceiver::addListener(DatagramListener* listener) {
+    if (listener) {
+        listeners_.push_back(listener);
+        return true;
+    }
+    return false;
+}
+
 bool McastReceiver::initialize() {
     fd_ = SysUtil::createMcastReceiverFd(addr_, local_);
     if (fd_ < 0) {
@@ -347,8 +355,8 @@ void McastReceiver::onEpollIn() {
             if (++counter % 1000000L == 1) 
                 std::cerr << "mcast::recvfrom got " << counter << " zero bytes packet" << std::endl;
         } else if (ret > 0) {
-            std::cout << fd_ << ":mcast::recvfrom:" << ret << ':' << buf << std::endl;
-            //for(auto& listener : listeners_) listener->onPacket(buf, ret, remote);
+            //std::cout << fd_ << ":mcast::recvfrom:" << ret << ':' << buf << std::endl;
+            for(auto& listener : listeners_) listener->onPacket(buf, ret, remote);
         } else break;
     }
 }
