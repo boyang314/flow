@@ -21,7 +21,7 @@ protected:
 class TcpConnection;
 struct StreamListener {
     virtual void onPacket(const char* data, size_t len, const sockaddr_in& from, TcpConnection* conn) {
-        std::cout << "StreamListener onPacket:" << data << std::endl;
+        std::cout << "StreamListener onPacket len:" << len << std::endl;
     }
     virtual void onConnect(TcpConnection* conn) { std::cout << "StreamListener onConnect\n"; }
     virtual void onDisconnect(TcpConnection* conn) { std::cout << "StreamListener onDisconnect\n"; }
