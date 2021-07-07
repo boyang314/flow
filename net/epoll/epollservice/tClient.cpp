@@ -3,6 +3,10 @@
 #include <iostream>
 #include <unistd.h>
 #include "MsgHeader.H"
+#include <string>
+#include <string.h>
+
+#define MaxBufferLen 1024
 
 StreamListener listener;
 
@@ -19,12 +23,20 @@ int main() {
 
     MsgHeader header;
     header.magic_ = 1234;
+    char buffer[MaxBufferLen];
 
     uint32_t counter = 0;
     while(service.isRunning()) {
         std::cout << "tcp client sendmsg " << counter << '\n';
+
+        memset(buffer, 0, MaxBufferLen);
+        std::string msg(counter, 'a');
         header.len_ = counter;
-        tcpClient->send((const char*)&header, sizeof(header));
+        memcpy(buffer, &header, sizeof(header));
+        memcpy(buffer+sizeof(MsgHeader), msg.c_str(), header.len_);
+
+        tcpClient->send((const char*)buffer, sizeof(header) + header.len_);
+
         sleep(1);
         ++counter; if (counter > 60) break;
     }
