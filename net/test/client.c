@@ -44,7 +44,7 @@ int main(int argc, char const *argv[])
     //char buffer[BUFLEN] = {0};
     char newline = '\n';
 
-    for(int count=0; count<100; ++count) {
+    for(int count=0; count<10000; ++count) {
         for(int i = 10; i < sizeof(msg); ++i ) {
             h.len = sizeof(header_t) + i + 1;
             printf("len: %d\n", h.len);
@@ -54,9 +54,12 @@ int main(int argc, char const *argv[])
             //sleep(1);
             write(sock, msg + i/2, i - i/2);
             write(sock, &newline, 1);
-            sleep(1);
+            //sleep(1);
         }
-        sleep(1);
+        //usleep(1000); //too fast
+        if (count%5==0) usleep(10000);
+        //usleep(100000);
+        //sleep(1);
     }
 
     close(sock);

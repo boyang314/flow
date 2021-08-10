@@ -132,7 +132,7 @@ int process_p(peer_t* p) {
 
         // partial packet
         if(hd->len > p->buflen) {
-            printf("partial packet\n");
+            //printf("partial packet\n");
             return 0;
         }
 
@@ -155,6 +155,11 @@ void enqueue_work(peer_t *peer) {
     worker_t *w = &workers[worker_index];
 
     pthread_mutex_lock(&(w->qmutex));
+    int next = (w->tail+1) % QLEN;
+    if (next == w->head) {
+        printf("queue full: id:%d head:%d tail:%d\n", w->workerid, w->head, w->tail);
+        exit(1);
+    }
     //printf("enqueue_work id:%d head:%d tail:%d\n", w->workerid, w->head, w->tail);
     w->peers[w->tail] = peer;
     w->tail = ++w->tail % QLEN;
@@ -166,9 +171,10 @@ void* do_work(void *worker) {
     worker_t *w = (worker_t*)worker;
     while(1) {
         pthread_mutex_lock(&(w->qmutex));
-        while (w->head < w->tail)  // if
+        while (w->head == w->tail) 
+            pthread_cond_wait(&(w->notEmpty), &(w->qmutex));
         {
-            //printf("do_work id:%d head:%d tail:%d\n", w->workerid, w->head, w->tail);
+            printf("do_work id:%d head:%d tail:%d\n", w->workerid, w->head, w->tail);
             int ret = process_p(w->peers[w->head]);
             if (ret >= 0) {
                 w->head = ++w->head % QLEN;
@@ -178,7 +184,6 @@ void* do_work(void *worker) {
                 exit(1);
             }
         }
-        pthread_cond_wait(&(w->notEmpty), &(w->qmutex));
         pthread_mutex_unlock(&(w->qmutex));
     }
 }
@@ -216,16 +221,22 @@ int on_connect(int sock) {
 
 int on_disconnect(int sock) {
     //book keeping
+    peer_t *p = &peers[sock];
     printf("client sock:%d disconnected\n", sock);
-    close(sock);
+    //close(sock);
+    //p->buflen = 0;
     return sock;
 }
 
 int on_data(int sock, char *buf, int len) {
     peer_t *p = &peers[sock];
     pthread_mutex_lock(&(p->bmutex));
-    memcpy(p->buf+p->buflen, buf, len); //check whether we can safe copy
-    p->buflen += len;
+    if (p->buflen + len < BUFLEN) {
+        memcpy(p->buf+p->buflen, buf, len);
+        p->buflen += len;
+    } else {
+        printf("sock:%d buffer full\n", sock);
+    }
     pthread_mutex_unlock(&(p->bmutex));
     enqueue_work(p);
     return len;
