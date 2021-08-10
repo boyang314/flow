@@ -42,7 +42,7 @@ int process_p(peer_t* p);
 
 int on_connect(int sock);
 int on_disconnect(int sock);
-int on_data(int sock);
+int on_data(int sock, char *buf, int len);
 
 int main(int argc, char *argv[])
 {
@@ -95,17 +95,32 @@ int main(int argc, char *argv[])
             {
                 if (i == sock) //server sock
                 {
-                    int new_socket = on_connect(sock);
-                    FD_SET(new_socket, &active_fd_set);
-                    if (new_socket > socket_max) socket_max = new_socket;
+                    struct sockaddr_in client;
+                    int len = sizeof(struct sockaddr_in);
+                    int new_socket = accept(sock, (struct sockaddr *)&client, (socklen_t*)&len);
+                    if (new_socket<0) {
+                        perror("accept failed\n");
+                        continue; //exit(1); //should clean shutdown server
+                    }
+                    else if (new_socket>MAXSOCKS) {
+                        printf("exceed max allowed number of sockets\n");
+                        close(new_socket);
+                    } else {
+                        FD_SET(new_socket, &active_fd_set);
+                        if (new_socket > socket_max) socket_max = new_socket;
+                        on_connect(new_socket);
+                    }
                 } 
                 else
                 {
-                    int read_size = on_data(i);
-                    if (read_size <= 0)
-                    {
+                    char buf[BUFLEN];
+                    int read_size = read(i, buf, BUFLEN);
+                    if (read_size <= 0) {
+                        if (read_size < 0) perror("recv failed");
                         on_disconnect(i);
                         FD_CLR(i, &active_fd_set);
+                    } else {
+                        on_data(i, buf, read_size);
                     }
                 }
             }
@@ -119,7 +134,7 @@ int main(int argc, char *argv[])
 int process_p(peer_t* p) {
     while (p->buflen >= sizeof(header_t)) {
         header_t *hd = (header_t*)p->buf;
-        printf("sock: %d, buffer len: %d, message len:%d\n", p->sock, p->buflen, hd->len);
+        //printf("sock: %d, buffer len: %d, message len:%d\n", p->sock, p->buflen, hd->len);
 
         // invalid header
         if(hd->magic != MAGIC || hd->len > BUFLEN)
@@ -136,9 +151,9 @@ int process_p(peer_t* p) {
         }
 
         // complete message
-        printf("complete packet from peer %lu:%d\n", pthread_self(), p->sock);
+        // printf("complete packet from peer %lu:%d\n", pthread_self(), p->sock);
         int strlen = hd->len - sizeof(header_t);
-        printf("payload:%*.*s\n", strlen, strlen, p->buf + sizeof(header_t));
+        printf("sock:%d reqtype:%d payload:%*.*s\n", p->sock, hd->reqtype, strlen, strlen, p->buf + sizeof(header_t));
         //write(sock, message, strlen(message));
 
         pthread_mutex_lock(&(p->bmutex));
@@ -154,7 +169,7 @@ void enqueue_work(peer_t *peer) {
     worker_t *w = &workers[worker_index];
 
     pthread_mutex_lock(&(w->qmutex));
-    printf("enqueue_work id:%d head:%d tail:%d\n", w->workerid, w->head, w->tail);
+    //printf("enqueue_work id:%d head:%d tail:%d\n", w->workerid, w->head, w->tail);
     w->peers[w->tail] = peer;
     w->tail = ++w->tail % QLEN;
     pthread_cond_signal(&(w->notEmpty));
@@ -166,15 +181,16 @@ void* do_work(void *worker) {
     while(1) 
     {
         pthread_mutex_lock(&(w->qmutex));
-        if (w->head < w->tail) 
+        while (w->head < w->tail)  // if
         {
-            printf("do_work id:%d head:%d tail:%d\n", w->workerid, w->head, w->tail);
+            //printf("do_work id:%d head:%d tail:%d\n", w->workerid, w->head, w->tail);
             int ret = process_p(w->peers[w->head]);
             if (ret >= 0)
             {
                 w->head = ++w->head % QLEN;
             } 
-            else if (ret < 0) {
+            else if (ret < 0) 
+            {
                 printf("received invalid packet\n");
                 exit(1);
             }
@@ -212,36 +228,25 @@ void init_peers() {
 }
 
 int on_connect(int sock) {
-    struct sockaddr_in client;
-    int len = sizeof(struct sockaddr_in);
-    int new_socket;
-    new_socket = accept(sock, (struct sockaddr *)&client, (socklen_t*)&len);
-    if (new_socket<0 || new_socket>MAXSOCKS)
-    {
-        perror("accept failed\n");
-        exit(1);
-    }
-    peers[new_socket].sock = new_socket;
-    return new_socket;
+    //book keeping
+    peers[sock].sock = sock;
+    printf("client sock:%d connected\n", sock);
+    return sock;
 }
 
 int on_disconnect(int sock) {
+    //book keeping
     printf("client sock:%d disconnected\n", sock);
     close(sock);
+    return sock;
 }
 
-int on_data(int sock) { //should take buffer, len as parameters
+int on_data(int sock, char *buf, int len) {
     peer_t *p = &peers[sock];
-    int read_size = 0;
     pthread_mutex_lock(&(p->bmutex));
-    if ((read_size = read(p->sock, p->buf+p->buflen, sizeof(p->buf)-p->buflen)) < 0) {
-        perror("recv failed");
-    }
-    if (read_size > 0)
-    {
-        p->buflen += read_size;
-        enqueue_work(p);
-    }
+    memcpy(p->buf+p->buflen, buf, len); //check whether we can safe copy
+    p->buflen += len;
     pthread_mutex_unlock(&(p->bmutex));
-    return read_size;
+    enqueue_work(p);
+    return len;
 } 

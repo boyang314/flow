@@ -36,6 +36,7 @@ int main(int argc, char const *argv[])
 
     header_t h;
     h.magic = MAGIC;
+    h.reqtype = ECHO;
 
     //h.reqtype = ECHO;
     char msg[27] = "abcdefghijklmnopqrstuvwxyz";

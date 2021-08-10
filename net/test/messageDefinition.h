@@ -11,6 +11,6 @@ typedef enum {
 typedef struct header {
     int magic;
     int len;
-    //int reqtype;
+    int reqtype;
 } header_t;
 
