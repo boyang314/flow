@@ -12,6 +12,7 @@
 #define NWORKERS 3
 #define MAXSOCKS 256
 #define QLEN 256
+#define QLENMASK 255 //ring buffer
 
 typedef struct {
     pthread_mutex_t bmutex;
@@ -158,14 +159,14 @@ void enqueue_work(peer_t *peer) {
     worker_t *w = &workers[worker_index];
 
     pthread_mutex_lock(&(w->qmutex));
-    int next = (w->tail+1) % QLEN;
+    int next = (w->tail+1) & QLENMASK;
     if (next == w->head) { //add cond var
         printf("queue full: id:%d head:%d tail:%d\n", w->workerid, w->head, w->tail);
         exit(1);
     }
     //printf("enqueue_work id:%d head:%d tail:%d\n", w->workerid, w->head, w->tail);
     w->peers[w->tail] = peer;
-    w->tail = ++w->tail % QLEN;
+    w->tail = next;
     pthread_cond_signal(&(w->notEmpty));
     pthread_mutex_unlock(&(w->qmutex));
 }
@@ -181,7 +182,7 @@ void* do_work(void *worker) {
             peer_t *peer = w->peers[w->head];
             int ret = process_p(peer);
             if (ret >= 0) {
-                w->head = ++w->head % QLEN;
+                w->head = ++w->head & QLENMASK;
             } 
             else if (ret < 0) {
                 exit(1);
