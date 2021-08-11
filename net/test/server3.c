@@ -14,9 +14,10 @@
 #define QLEN 256
 
 typedef struct {
-    int sock, buflen;
     pthread_mutex_t bmutex;
+    int sock, buflen;
     char buf[BUFLEN];
+    int cleanup;
 } peer_t;
 peer_t peers[MAXSOCKS];
 
@@ -30,7 +31,9 @@ typedef struct {
 } worker_t;
 worker_t workers[NWORKERS]; //worker pool
 
+void init_peer(peer_t *peer);
 void init_peers();
+void init_worker(worker_t *worker, int id);
 void init_workers();
 
 void *do_work(void *worker);
@@ -104,7 +107,7 @@ int main(int argc, char *argv[])
             } else {
                 char buf[BUFLEN];
                 int read_size = read(i, buf, BUFLEN);
-                if (read_size <= 0) {
+                if (read_size <= 0) { //use async, 0 + EAGAIN should be fine
                     if (read_size < 0) perror("recv failed");
                     on_disconnect(i);
                     FD_CLR(i, &active_fd_set);
@@ -126,7 +129,7 @@ int process_p(peer_t* p) {
 
         // invalid header
         if(hd->magic != MAGIC || hd->len > BUFLEN) {
-            printf("invalid packet\n");
+            printf("sock %d received invalid packet\n", p->sock);
             return -1;
         }
 
@@ -139,7 +142,7 @@ int process_p(peer_t* p) {
         // complete message
         // printf("complete packet from peer %lu:%d\n", pthread_self(), p->sock);
         int strlen = hd->len - sizeof(header_t);
-        printf("sock:%d reqtype:%d payload:%*.*s\n", p->sock, hd->reqtype, strlen, strlen, p->buf + sizeof(header_t));
+        //printf("sock:%d reqtype:%d payload:%*.*s\n", p->sock, hd->reqtype, strlen, strlen, p->buf + sizeof(header_t));
         //write(sock, message, strlen(message));
 
         pthread_mutex_lock(&(p->bmutex));
@@ -156,7 +159,7 @@ void enqueue_work(peer_t *peer) {
 
     pthread_mutex_lock(&(w->qmutex));
     int next = (w->tail+1) % QLEN;
-    if (next == w->head) {
+    if (next == w->head) { //add cond var
         printf("queue full: id:%d head:%d tail:%d\n", w->workerid, w->head, w->tail);
         exit(1);
     }
@@ -174,14 +177,19 @@ void* do_work(void *worker) {
         while (w->head == w->tail) 
             pthread_cond_wait(&(w->notEmpty), &(w->qmutex));
         {
-            printf("do_work id:%d head:%d tail:%d\n", w->workerid, w->head, w->tail);
-            int ret = process_p(w->peers[w->head]);
+            //printf("do_work id:%d head:%d tail:%d\n", w->workerid, w->head, w->tail);
+            peer_t *peer = w->peers[w->head];
+            int ret = process_p(peer);
             if (ret >= 0) {
                 w->head = ++w->head % QLEN;
             } 
             else if (ret < 0) {
-                printf("received invalid packet\n");
                 exit(1);
+            }
+            //race condition peer->cleanup
+            if (peer->cleanup) {
+                close(peer->sock);
+                init_peer(peer);
             }
         }
         pthread_mutex_unlock(&(w->qmutex));
@@ -203,28 +211,36 @@ void init_workers() {
     }
 }
 
+void init_peer(peer_t *peer) {
+    peer->sock = 0;
+    peer->buflen = 0;
+    pthread_mutex_init(&(peer->bmutex), NULL);
+    memset(peer->buf, 0, BUFLEN);
+    peer->cleanup = 0;
+}
+
 void init_peers() {
     for(int i=0; i<MAXSOCKS; ++i) {
-        peers[i].sock = 0;
-        peers[i].buflen = 0;
-        pthread_mutex_init(&(peers[i].bmutex), NULL);
-        memset(peers[i].buf, 0, BUFLEN);
+        init_peer(&peers[i]);
     }
 }
 
 int on_connect(int sock) {
     //book keeping
-    peers[sock].sock = sock;
+    peers[sock].sock = sock; //check this is not existing active sock
     printf("client sock:%d connected\n", sock);
     return sock;
 }
 
 int on_disconnect(int sock) {
     //book keeping
-    peer_t *p = &peers[sock];
-    printf("client sock:%d disconnected\n", sock);
-    //close(sock);
-    //p->buflen = 0;
+    printf("client sock:%d disconnected, remaing buflen:%d\n", sock, peers[sock].buflen);
+    peers[sock].cleanup = 1; //enqueue with cleanup=1
+    enqueue_work(&(peers[sock]));
+    /*
+    close(sock); //premature if sock buffer not empty
+    init_peer(sock);
+    */
     return sock;
 }
 
