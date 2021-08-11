@@ -124,6 +124,7 @@ int main(int argc, char *argv[])
 
 //assume single thread, -1 for bad buffer
 int process_p(peer_t* p) {
+    //race condition on p->buflen
     while (p->buflen >= sizeof(header_t)) {
         header_t *hd = (header_t*)p->buf;
         //printf("sock: %d, buffer len: %d, message len:%d\n", p->sock, p->buflen, hd->len);
@@ -141,7 +142,7 @@ int process_p(peer_t* p) {
         }
 
         // complete message
-        // printf("complete packet from peer %lu:%d\n", pthread_self(), p->sock);
+        //printf("complete packet from peer %lu:%d\n", pthread_self(), p->sock);
         int strlen = hd->len - sizeof(header_t);
         //printf("sock:%d reqtype:%d payload:%*.*s\n", p->sock, hd->reqtype, strlen, strlen, p->buf + sizeof(header_t));
         //write(sock, message, strlen(message));
