@@ -25,7 +25,7 @@
 #include <thread>
 
 //#define QUEUE_SIZE	(32 * 1024)
-#define QUEUE_SIZE	(2 * 1024)
+#define QUEUE_SIZE	1024
 
 /*
  * ------------------------------------------------------------------------
@@ -243,7 +243,8 @@ static const auto N = QUEUE_SIZE * 1024;
 static const auto CONSUMERS = 2;
 static const auto PRODUCERS = 2;
 
-typedef unsigned char	q_type;
+//typedef unsigned char	q_type;
+typedef unsigned int	q_type;
 
 static const q_type X_EMPTY = 0; // the address skipped by producers
 static const q_type X_MISSED = 255; // the address skipped by consumers
@@ -354,37 +355,53 @@ run_test(Q &&q)
 	std::cout << (res ? "FAILED" : "Passed") << std::endl;
 }
 
-LockFreeQueue<q_type> q(2, 1);
+q_type global = 1;
+LockFreeQueue<q_type> q(4, 1);
+
 void enqueue() {
-    for(int i=0; i<QUEUE_SIZE/2; ++i) {
-        q.push(new unsigned char(1));
+    for(int i=0; i<QUEUE_SIZE; ++i) {
+        q.push(&global);
     }
 }
 
 void dequeue() {
-    unsigned char* tmp;
     int sum=0;
-    //for(int i=0; i<2*QUEUE_SIZE; ++i) {
-    while(1) {
-        tmp = q.pop();
+    for(int i=0; i<4*QUEUE_SIZE; ++i) {
+        unsigned int *tmp = q.pop();
         if (tmp) {
-            sum+=*tmp;
-            std::cout << "\nsum:" << sum << '\n';
+            sum += *tmp;
+            if (sum%128==0) std::cout << "\nsum:" << sum << '\n';
+        } else {
+            std::cout << "poped null\n";
+            --i;
         }
     }
+    /*
+    while(1) {
+        unsigned int* tmp=0;
+        tmp = q.pop();
+        if (tmp) {
+            sum += *tmp;
+            std::cout << "\nsum:" << sum << '\n';
+            if (sum == 4*QUEUE_SIZE) break;
+        } //esle usleep?
+    }
+    */
 }
 
 int
 main()
 {
     std::thread t1(enqueue);
-    std::thread t3(enqueue);
-    //std::thread t4(enqueue);
-    //std::thread t5(enqueue);
     std::thread t2(dequeue);
+    std::thread t3(enqueue);
+    std::thread t4(enqueue);
+    std::thread t5(enqueue);
     t1.join();
     t2.join();
     t3.join();
+    t4.join();
+    t5.join();
 /*
 	LockFreeQueue<q_type> lf_q(PRODUCERS, CONSUMERS);
 	run_test<LockFreeQueue<q_type>>(std::move(lf_q));
