@@ -60,8 +60,22 @@ void enqueue() {
     //std::cout << "ensum:" << sum << " ecount:" << q.ecount() << '\n';
 }
 
-void dequeue(int i) {
+void dequeue(int idx) {
     int sum=0;
+    for(int i=0; i<2*SIZE; ++i) {
+        int* tmp=0;
+        if (q.deq(tmp)) {
+            sum += *tmp;
+        } else {
+            //std::cout << "dequeue empty\n";
+            //usleep(100000);
+            sleep(1);
+            std::cout << idx << " so far dsum:" << sum << '\n';
+            --i;
+        }
+        std::cout << idx << " sum:" << sum << '\n';
+    }
+    /*
     while (1) {
         int* tmp=0;
         if (q.deq(tmp)) {
@@ -74,6 +88,7 @@ void dequeue(int i) {
             std::cout << i << " so far dsum:" << sum << '\n';
         }
     }
+    */
 }
 
 int main() {
