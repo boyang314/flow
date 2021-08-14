@@ -140,6 +140,7 @@ public:
 		 */
 		while (__builtin_expect(tp.head >= last_tail_ + Q_SIZE, 0))
 		{
+            //::sched_yield();
 			auto min = tail_;
 
 			// Update the last_tail_.
@@ -154,14 +155,14 @@ public:
 			}
 			last_tail_ = min;
 
+            if (last_head_ == last_tail_) break;
+
 			if (tp.head < last_tail_ + Q_SIZE)
 				break;
-			//_mm_pause();
-            ::sched_yield();
+			_mm_pause();
 		}
 
 		ptr_array_[tp.head & Q_MASK] = ptr;
-
 		// Allow consumers eat the item.
 		tp.head = ULONG_MAX;
 	}
@@ -190,6 +191,7 @@ public:
 		 */
 		while (__builtin_expect(tp.tail >= last_head_, 0))
 		{
+            //::sched_yield();
 			auto min = head_;
 
 			// Update the last_head_.
@@ -206,8 +208,7 @@ public:
 
 			if (tp.tail < last_head_)
 				break;
-			//_mm_pause();
-            ::sched_yield();
+			_mm_pause();
 		}
 
 		T *ret = ptr_array_[tp.tail & Q_MASK];
