@@ -1,19 +1,32 @@
 #include <atomic>
 #include <thread>
 #include <iostream>
+#include <string.h>
+#include <unistd.h>
+#include <sched.h>
 
-#define SIZE 4096
+//#define SIZE 1024 //working without usleep
+#define SIZE 8192
 #define SMASK SIZE-1
 
+#define etype int*
+
 class mpsc {
-    int* buf[SIZE]; //should use atomic type
+    etype buf[SIZE]; //should use atomic type
     int head{0};
     std::atomic_int tail{0};
 public:
-    bool enq(int* e) {
-        int ntail = tail.fetch_add(1);
-        if (buf[ntail & SMASK] == NULL) {
-            buf[ntail & SMASK] = e;
+    std::atomic_int ecount_{0};
+    std::atomic_int dcount_{0};
+public:
+    mpsc() { memset(buf, 0, sizeof(etype)*SIZE); }
+
+    bool enq(etype e) {
+        int ctail = tail.fetch_add(1);
+        int idx = ctail&SMASK;
+        if (buf[idx] == NULL) {
+            buf[idx] = e;
+            ++ecount_;
             return true;
         } else {
             tail.fetch_add(-1);
@@ -21,11 +34,13 @@ public:
         }
     }
 
-    bool deq(int*& e) {
-        e = buf[head & SMASK];
+    bool deq(etype& e) {
+        int idx = head&SMASK;
+        e = buf[idx];
         if (e != NULL) {
-            buf[head & SMASK] = NULL; 
+            buf[idx] = NULL; 
             ++head;
+            ++dcount_;
             return true;
         }
         return false;
@@ -37,26 +52,36 @@ mpsc q;
 
 void enqueue() {
     for(int i=0; i<SIZE; ++i) {
-        q.enq(&global);
+        //while(!q.enq(&global)); //yield to be nice
+        while(!q.enq(&global)) { usleep(1000); }
+        //while(!q.enq(&global)) { sched_yield(); } //still broken with yield
     }
+    std::cout << "ecount:" << q.ecount_ << '\n';
 }
 
 void dequeue() {
-    int* tmp;
     int sum=0;
-    for(int i=0; i<2*SIZE; ++i) {
-        //if(q.deq(tmp)) sum+=*tmp;
-        while(!q.deq(tmp));
-        sum += *tmp;
+    for(int i=0; i<4*SIZE; ++i) {
+        int* tmp=0;
+        if(q.deq(tmp)) {
+            sum += *tmp;
+            if (i > 4*SIZE-5) std::cout << "\nsum:" << sum << " dcount:" << q.dcount_ << '\n';
+        } else {
+            --i;
+            //sched_yield();
+        }
     }
-    std::cout << "\nsum:" << sum << '\n';
 }
 
 int main() {
     std::thread t1(enqueue);
     std::thread t3(enqueue);
+    std::thread t4(enqueue);
+    std::thread t5(enqueue);
     std::thread t2(dequeue);
     t1.join();
     t2.join();
     t3.join();
+    t4.join();
+    t5.join();
 }
