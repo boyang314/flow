@@ -156,7 +156,8 @@ public:
 
 			if (tp.head < last_tail_ + Q_SIZE)
 				break;
-			_mm_pause();
+			//_mm_pause();
+            ::sched_yield();
 		}
 
 		ptr_array_[tp.head & Q_MASK] = ptr;
@@ -205,7 +206,8 @@ public:
 
 			if (tp.tail < last_head_)
 				break;
-			_mm_pause();
+			//_mm_pause();
+            ::sched_yield();
 		}
 
 		T *ret = ptr_array_[tp.tail & Q_MASK];
@@ -234,6 +236,8 @@ private:
 };
 
 
+#if 0
+
 /*
  * ------------------------------------------------------------------------
  *	Tests for naive and lock-free queues
@@ -243,8 +247,7 @@ static const auto N = QUEUE_SIZE * 1024;
 static const auto CONSUMERS = 2;
 static const auto PRODUCERS = 2;
 
-//typedef unsigned char	q_type;
-typedef unsigned int	q_type;
+typedef unsigned char	q_type;
 
 static const q_type X_EMPTY = 0; // the address skipped by producers
 static const q_type X_MISSED = 255; // the address skipped by consumers
@@ -355,6 +358,9 @@ run_test(Q &&q)
 	std::cout << (res ? "FAILED" : "Passed") << std::endl;
 }
 
+#endif
+
+typedef unsigned int	q_type;
 q_type global = 1;
 LockFreeQueue<q_type> q(4, 1);
 
