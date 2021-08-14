@@ -41,7 +41,6 @@ mpsc q;
 void enqueue() {
     int sum=0;
     for(int i=0; i<SIZE; ++i) {
-        //while(!q.enq(&global));
         while (!q.enq(&global)) { 
             //sched_yield(); 
             usleep(1000);
@@ -54,7 +53,7 @@ void enqueue() {
 void dequeue() {
     int* tmp;
     int sum=0;
-    for(int i=0; i<2*SIZE; ++i) {
+    for(int i=0; i<4*SIZE; ++i) {
         if (q.deq(tmp)) {
             sum += *tmp;
             std::cout << "\nsum:" << sum << '\n';
@@ -68,12 +67,12 @@ void dequeue() {
 int main() {
     std::thread t1(enqueue);
     std::thread t3(enqueue);
-    //std::thread t4(enqueue);
-    //std::thread t5(enqueue);
+    std::thread t4(enqueue);
+    std::thread t5(enqueue);
     std::thread t2(dequeue);
     t1.join();
     t2.join();
     t3.join();
-    //t4.join();
-    //t5.join();
+    t4.join();
+    t5.join();
 }
