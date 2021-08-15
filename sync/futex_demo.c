@@ -23,16 +23,13 @@ writing messages.
 #include <linux/futex.h>
 #include <sys/time.h>
 
-#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \
-} while (0)
+#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
 static uint32_t *futex1, *futex2, *iaddr;
 
-static int futex(uint32_t *uaddr, int futex_op, uint32_t val,
-        const struct timespec *timeout, uint32_t *uaddr2, uint32_t val3)
+static int futex(uint32_t *uaddr, int futex_op, uint32_t val, const struct timespec *timeout, uint32_t *uaddr2, uint32_t val3)
 {
-    return syscall(SYS_futex, uaddr, futex_op, val,
-            timeout, uaddr2, val3);
+    return syscall(SYS_futex, uaddr, futex_op, val, timeout, uaddr2, val3);
 }
 
 /* Acquire the futex pointed to by 'futexp': wait for its value to
@@ -46,7 +43,7 @@ static void fwait(uint32_t *futexp)
        atomically performs the equivalent of:
 
        if (*ptr == *oldval)
-     *ptr = newval;
+            *ptr = newval;
 
      It returns true if the test yielded true and *ptr was updated. */
 
@@ -79,8 +76,7 @@ static void fpost(uint32_t *futexp)
     const uint32_t zero = 0;
     if (atomic_compare_exchange_strong(futexp, &zero, 1)) {
         s = futex(futexp, FUTEX_WAKE, 1, NULL, NULL, 0);
-        if (s  == -1)
-            errExit("futex-FUTEX_WAKE");
+        if (s  == -1) errExit("futex-FUTEX_WAKE");
     }
 }
 
@@ -98,10 +94,8 @@ int main(int argc, char *argv[])
        subsequently use the "shared" futex operations (i.e., not the
        ones suffixed "_PRIVATE"). */
 
-    iaddr = mmap(NULL, sizeof(*iaddr) * 2, PROT_READ | PROT_WRITE,
-            MAP_ANONYMOUS | MAP_SHARED, -1, 0);
-    if (iaddr == MAP_FAILED)
-        errExit("mmap");
+    iaddr = mmap(NULL, sizeof(*iaddr) * 2, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
+    if (iaddr == MAP_FAILED) errExit("mmap");
 
     futex1 = &iaddr[0];
     futex2 = &iaddr[1];
@@ -109,12 +103,10 @@ int main(int argc, char *argv[])
     *futex1 = 0;        /* State: unavailable */
     *futex2 = 1;        /* State: available */
 
-    /* Create a child process that inherits the shared anonymous
-       mapping. */
+    /* Create a child process that inherits the shared anonymous mapping. */
 
     childPid = fork();
-    if (childPid == -1)
-        errExit("fork");
+    if (childPid == -1) errExit("fork");
 
     if (childPid == 0) {        /* Child */
         for (int j = 0; j < nloops; j++) {
