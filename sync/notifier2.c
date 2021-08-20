@@ -36,11 +36,12 @@ private:
 
 int main() {
     fbarrier ev;
-    std::thread t1([&ev] { ev.wait(); });
-    std::thread t2([&ev] { ev.wait(); });
-    std::thread t3([&ev] { ev.wait(); });
-    std::thread t4([&ev] { ev.wait(); });
+    std::thread t1([&ev] { ev.wait(); std::cout << "1 wakeup\n"; });
+    std::thread t2([&ev] { ev.wait(); std::cout << "2 wakeup\n"; });
+    std::thread t3([&ev] { ev.wait(); std::cout << "3 wakeup\n"; });
+    std::thread t4([&ev] { ev.wait(); std::cout << "4 wakeup\n"; });
 
+    //std::thread w([&ev] { sleep(1); ev.signal(); ev.signal(); sleep(1), ev.signal(); ev.signal(); sleep(1); });
     std::thread w([&ev] { ev.signal(); ev.signal(); ev.signal(); ev.signal(); sleep(1); });
     /*
     ev.signal();
@@ -56,8 +57,9 @@ int main() {
     t2.join();
     t3.join();
     t4.join();
-    std::cout << "done\n";
+    std::cout << "t done\n";
     w.join();
+    std::cout << "w done\n";
 
     std::cout << "UINT32_MAX-1\t:" << UINT32_MAX - 1 << '\n';
     std::cout << "UINT32_MAX\t:" << UINT32_MAX << '\n';
