@@ -7,10 +7,14 @@
 #include <thread>
 #include <iostream>
 
+#define futex(...) syscall(SYS_futex, __VA_ARGS__);
+
+/*
 static int futex(uint32_t *uaddr, int futex_op, uint32_t val, const struct timespec *timeout, uint32_t *uaddr2, uint32_t val3)
 {
     return syscall(SYS_futex, uaddr, futex_op, val, timeout, uaddr2, val3);
 }
+*/
 
 static int futex_wait(uint32_t* uaddr, uint32_t val) {
     return futex(uaddr, FUTEX_WAIT, val, NULL, NULL, 0);

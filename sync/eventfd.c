@@ -4,10 +4,11 @@
 #include <time.h>
 #include <sys/eventfd.h>
 #include <sys/epoll.h>
+
 #include <unistd.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include <thread>
 
@@ -34,16 +35,18 @@ uint64_t handleTimer(int tfd) {
     uint64_t u;
     ssize_t s = read(tfd, &u, sizeof(uint64_t));
     if (s != sizeof(uint64_t)) handle_error("read");
-    printf("handleTimer:%lu\n", u);
+    //printf("handleTimer:%lu\n", u);
     return u;
 }
 
+int dfd; //done for day
 void handleSignal(int sfd) {
     struct signalfd_siginfo fdsi;
     ssize_t s = read(sfd, &fdsi, sizeof(struct signalfd_siginfo));
     if (s != sizeof(struct signalfd_siginfo)) handle_error("read");
     if (fdsi.ssi_signo == SIGINT) {
         printf("Got SIGINT\n");
+        genEvent(dfd, 1);
     } else if (fdsi.ssi_signo == SIGQUIT) {
         printf("Got SIGQUIT\n");
     } else {
@@ -56,25 +59,30 @@ int main(int argc, char *argv[])
     int efd = eventfd(0, 0);
     if (efd == -1) handle_error("eventfd");
 
-    int dfd = eventfd(0, 0);
+    dfd = eventfd(0, 0);
     if (dfd == -1) handle_error("eventfd");
 
     int tfd = timerfd_create(CLOCK_REALTIME, 0);
     if (tfd == -1) handle_error("timerfd_create");
+
     struct timespec now;
     struct itimerspec new_value;
     if (clock_gettime(CLOCK_REALTIME, &now) == -1) handle_error("clock_gettime");
-    new_value.it_value.tv_sec = now.tv_sec + 3;
+    new_value.it_value.tv_sec = now.tv_sec + 1;
     new_value.it_value.tv_nsec = now.tv_nsec;
     new_value.it_interval.tv_sec = 1;
-    new_value.it_interval.tv_nsec = 0;
+    new_value.it_interval.tv_nsec = 1000000;
     if (timerfd_settime(tfd, TFD_TIMER_ABSTIME, &new_value, NULL) == -1) handle_error("timerfd_settime");
 
     sigset_t mask;
+    sigfillset(&mask);
+    /*
     sigemptyset(&mask);
     sigaddset(&mask, SIGINT);
     sigaddset(&mask, SIGQUIT);
+    */
     if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1) handle_error("sigprocmask");
+
     int sfd = signalfd(-1, &mask, 0);
     if (sfd == -1) handle_error("signalfd");
 
@@ -87,7 +95,7 @@ int main(int argc, char *argv[])
 
     ev.events = EPOLLIN;
     ev.data.fd = dfd;
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, dfd, &ev) == -1) handle_error("epoll_ctl: add efd");
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, dfd, &ev) == -1) handle_error("epoll_ctl: add dfd");
 
     ev.events = EPOLLIN;
     ev.data.fd = tfd;
@@ -99,8 +107,8 @@ int main(int argc, char *argv[])
 
     //uint64_t magic = UINT64_MAX - 1;
     //std::thread t1([&] { for(int i=0; i<100; ++i) { genEvent(efd, i); sleep(1); } genEvent(efd, magic); });
-    std::thread t1([&] { for(int i=0; i<100; ++i) { genEvent(efd, i); sleep(1); } genEvent(dfd, 1); });
-    std::thread t2([&] { for(int i=0; i<100; ++i) { genEvent(efd, i); sleep(1); }});
+    std::thread t1([&] { for(int i=0; i<10; ++i) { genEvent(efd, i); sleep(1); }});
+    std::thread t2([&] { for(int i=0; i<10; ++i) { genEvent(efd, i); sleep(1); }});
 
     bool ready = true;
     while (ready) {
