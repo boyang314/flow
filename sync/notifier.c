@@ -8,6 +8,7 @@
 #include <iostream>
 
 #define futex(...) syscall(SYS_futex, __VA_ARGS__);
+#define is_pending(x) (!((x)&1))
 
 /*
 static int futex(uint32_t *uaddr, int futex_op, uint32_t val, const struct timespec *timeout, uint32_t *uaddr2, uint32_t val3)
@@ -46,4 +47,7 @@ int main() {
     ev.wait();
     std::cout << "free2\n";
     t1.join();
+
+    for (int i=0; i<10; ++i) 
+        std::cout << "ispending:" << i << ':' << is_pending(i) << '\n';
 }

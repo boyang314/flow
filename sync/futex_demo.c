@@ -23,7 +23,7 @@ writing messages.
 #include <linux/futex.h>
 #include <sys/time.h>
 
-#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); } while (0)
+#define handle_error(msg)    do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
 static uint32_t *futex1, *futex2, *iaddr;
 
@@ -58,7 +58,7 @@ static void fwait(uint32_t *futexp)
 
         s = futex(futexp, FUTEX_WAIT, 0, NULL, NULL, 0);
         if (s == -1 && errno != EAGAIN)
-            errExit("futex-FUTEX_WAIT");
+            handle_error("futex-FUTEX_WAIT");
     }
 }
 
@@ -76,7 +76,7 @@ static void fpost(uint32_t *futexp)
     const uint32_t zero = 0;
     if (atomic_compare_exchange_strong(futexp, &zero, 1)) {
         s = futex(futexp, FUTEX_WAKE, 1, NULL, NULL, 0);
-        if (s  == -1) errExit("futex-FUTEX_WAKE");
+        if (s  == -1) handle_error("futex-FUTEX_WAKE");
     }
 }
 
@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
        ones suffixed "_PRIVATE"). */
 
     iaddr = mmap(NULL, sizeof(*iaddr) * 2, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
-    if (iaddr == MAP_FAILED) errExit("mmap");
+    if (iaddr == MAP_FAILED) handle_error("mmap");
 
     futex1 = &iaddr[0];
     futex2 = &iaddr[1];
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
     /* Create a child process that inherits the shared anonymous mapping. */
 
     childPid = fork();
-    if (childPid == -1) errExit("fork");
+    if (childPid == -1) handle_error("fork");
 
     if (childPid == 0) {        /* Child */
         for (int j = 0; j < nloops; j++) {
