@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <poll.h>
+#include <fcntl.h>
 
 #define NFDS 3 
 
@@ -15,6 +16,13 @@ uint16_t getIndex(const struct pollfd pfds[], const uint16_t count) {
         if (pfds[i].fd == 0) return i;
     }
     return count;
+}
+
+int setNonBlocking(int fd) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1) return -1;
+    flags |= O_NONBLOCK;
+    return (fcntl(fd, F_SETFL, flags) == 0) ? 1 : -1;
 }
 
 int main(int argc, char *argv[])
@@ -37,6 +45,8 @@ int main(int argc, char *argv[])
 
         if (pfds[0].revents & POLLIN) {
             int connfd = accept(listenfd, NULL, NULL);
+            //int rc = setNonBlocking(connfd);
+            //if (rc < 0) printf("failed to set nonblocking\n");
             uint16_t idx = getIndex(pfds, count);
             if (idx >= NFDS) {
                 const char msg[] = "exceed max conns";
